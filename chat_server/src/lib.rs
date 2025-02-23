@@ -1,5 +1,7 @@
 mod config;
+mod error;
 mod handlers;
+mod models;
 
 use std::{ops::Deref, sync::Arc};
 
@@ -8,8 +10,9 @@ use axum::{
     Router,
 };
 pub use config::AppConfig;
+pub use error::AppError;
 use handlers::*;
-
+pub use models::User;
 pub fn get_router(config: AppConfig) -> Router {
     let state = AppState::new(config);
 
