@@ -1,0 +1,11 @@
+<html>
+    <body>
+        <h1>Hello, World!</h1>
+        <script>
+            const eventSource = new EventSource('http://localhost:6687/events');
+            eventSource.onmessage = function(event) {
+                console.log("Got event: ", event.data);
+            };
+        </script>
+    </body>
+</html>

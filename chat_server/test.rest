@@ -1,0 +1,19 @@
+### chat api
+
+GET http://localhost:6688/api/chat
+
+### create chat
+
+POST http://localhost:6688/api/chat
+
+### update chat
+
+PATCH http://localhost:6688/api/chat/1
+
+### delete chat
+
+DELETE http://localhost:6688/api/chat/1
+
+### index
+
+GET http://localhost:6688/
