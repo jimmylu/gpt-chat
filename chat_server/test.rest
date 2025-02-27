@@ -1,10 +1,23 @@
 ### chat api
 
-GET http://localhost:6688/api/chat
+POST  http://localhost:6688/api/signup
+Content-Type: application/json
 
-### create chat
+{
+    "email": "luxixi@yahoo.com",
+    "password": "1234567",
+    "fullname": "luxixi"
+}
 
-POST http://localhost:6688/api/chat
+### sign in
+
+POST http://localhost:6688/api/signin
+Content-Type: application/json
+
+{
+    "email": "luxixi@yahoo.com",
+    "password": "1234567"
+}
 
 ### update chat
 

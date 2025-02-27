@@ -8,11 +8,19 @@ use anyhow::Result;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
+    pub auth: AuthConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub port: u16,
+    pub db_url: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AuthConfig {
+    pub sk: String,
+    pub pk: String,
 }
 
 impl AppConfig {
@@ -21,7 +29,7 @@ impl AppConfig {
         // read from /etc/config/app.yml, or ./app.yml or from env CHAT_CONFIG
         let ret = match (
             File::open("/etc/config/app.yml"),
-            File::open("./app.yml"),
+            File::open("app.yml"),
             std::env::var("CHAT_CONFIG"),
         ) {
             (Ok(file), _, _) => serde_yaml::from_reader(file),
@@ -31,5 +39,19 @@ impl AppConfig {
         };
 
         Ok(ret?)
+    }
+}
+
+#[cfg(test)]
+impl AppConfig {
+    pub fn load_for_test() -> Result<Self> {
+        let file = std::env::current_dir()
+            .ok()
+            .map(|p| p.parent().unwrap().join("app.yml"))
+            .map(File::open)
+            .transpose()?
+            .unwrap();
+
+        Ok(serde_yaml::from_reader(file)?)
     }
 }

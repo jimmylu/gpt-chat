@@ -7,6 +7,8 @@ use argon2::{
 };
 use sqlx::PgPool;
 
+use super::CreateUserPayload;
+
 impl User {
     // find a user by email
     pub async fn find_by_email(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
@@ -48,16 +50,18 @@ impl User {
     }
 
     // create a new user
-    pub async fn create(
-        email: &str,
-        fullname: &str,
-        password: &str,
-        pool: &PgPool,
-    ) -> Result<Self, AppError> {
-        let password_hash = hash_password(password)?;
+    pub async fn create(input: CreateUserPayload, pool: &PgPool) -> Result<Self, AppError> {
+        let password_hash = hash_password(&input.password)?;
+        let user: Option<Self> = sqlx::query_as("select * from users where email = $1")
+            .bind(&input.email)
+            .fetch_optional(pool)
+            .await?;
+        if user.is_some() {
+            return Err(AppError::UserAlreadyExists);
+        }
         let user = sqlx::query_as("insert into users (fullname, email, password_hash) values ($1, $2, $3) returning id, fullname, email, created_at, updated_at")
-            .bind(fullname)
-            .bind(email)
+            .bind(input.fullname)
+            .bind(input.email)
             .bind(password_hash)
             .fetch_one(pool)
             .await?;
@@ -115,7 +119,15 @@ mod tests {
         let fullname = "test";
         let password = "test";
 
-        let user = User::create(email, fullname, password, &pool).await?;
+        let user = User::create(
+            CreateUserPayload {
+                email: email.to_string(),
+                fullname: fullname.to_string(),
+                password: password.to_string(),
+            },
+            &pool,
+        )
+        .await?;
         assert_ne!(user.id, 0);
         assert_eq!(user.email, email);
         assert_eq!(user.fullname, fullname);
@@ -136,7 +148,15 @@ mod tests {
         let fullname = "test";
         let password = "test";
 
-        let user = User::create(email, fullname, password, &pool).await?;
+        let user = User::create(
+            CreateUserPayload {
+                email: email.to_string(),
+                fullname: fullname.to_string(),
+                password: password.to_string(),
+            },
+            &pool,
+        )
+        .await?;
 
         let user_1 = User::verify(email, password, &pool).await?;
         assert!(user_1.is_some());
@@ -159,7 +179,15 @@ mod tests {
         let password = "test";
         let wrong_password = "wrong";
 
-        let _user = User::create(email, fullname, password, &pool).await;
+        let _user = User::create(
+            CreateUserPayload {
+                email: email.to_string(),
+                fullname: fullname.to_string(),
+                password: password.to_string(),
+            },
+            &pool,
+        )
+        .await;
 
         let result = User::verify(email, wrong_password, &pool).await;
         matches!(result, Err(AppError::InvalidCredentials));
@@ -178,12 +206,19 @@ mod tests {
         let password = "test";
 
         let pool = tdb.get_pool().await;
-        let _user = User::create(email, "test", password, &pool).await?;
+        let _user = User::create(
+            CreateUserPayload {
+                email: email.to_string(),
+                fullname: "test".to_string(),
+                password: password.to_string(),
+            },
+            &pool,
+        )
+        .await?;
 
         let wrong_email = "wrong@test.com";
         let user_1 = User::verify(wrong_email, password, &pool).await?;
         assert!(user_1.is_none());
-
         Ok(())
     }
 
@@ -200,7 +235,15 @@ mod tests {
         let fullname = "test";
         let password = "test";
 
-        let _user = User::create(email, fullname, password, &pool).await?;
+        let _user = User::create(
+            CreateUserPayload {
+                email: email.to_string(),
+                fullname: fullname.to_string(),
+                password: password.to_string(),
+            },
+            &pool,
+        )
+        .await?;
 
         let user = User::find_by_email(email, &pool).await?;
         assert!(user.is_some());
