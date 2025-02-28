@@ -14,6 +14,13 @@ use axum::{
 };
 use handlers::*;
 use sqlx::PgPool;
+use tower::ServiceBuilder;
+use tower_http::{
+    compression::CompressionLayer,
+    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    LatencyUnit,
+};
+use tracing::Level;
 use utils::{DecodingKey, EncodingKey};
 
 pub use config::AppConfig;
@@ -31,6 +38,20 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
             get(list_chat_handler)
                 .patch(update_chat_handler)
                 .delete(delete_chat_handler),
+        )
+        .layer(
+            ServiceBuilder::new()
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                        .on_request(DefaultOnRequest::new().level(Level::INFO))
+                        .on_response(
+                            DefaultOnResponse::new()
+                                .level(Level::INFO)
+                                .latency_unit(LatencyUnit::Micros),
+                        ),
+                )
+                .layer(CompressionLayer::new().gzip(true).br(true).deflate(true)),
         );
 
     let app = Router::new()
