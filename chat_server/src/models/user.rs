@@ -91,9 +91,8 @@ pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppE
 
 #[cfg(test)]
 mod tests {
-    use sqlx_db_tester::TestPg;
-
     use super::*;
+    use crate::AppState;
 
     #[tokio::test]
     async fn hash_password_and_verify_should_work() -> Result<(), AppError> {
@@ -109,10 +108,7 @@ mod tests {
     #[tokio::test]
     async fn create_user_should_work() -> Result<(), AppError> {
         // test by sqlx-db-tester
-        let tdb = TestPg::new(
-            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
-            std::path::Path::new("../migrations"),
-        );
+        let (tdb, _state) = AppState::new_for_test().await?;
         let pool = tdb.get_pool().await;
 
         let email = "test@test.com";
@@ -137,10 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_work() -> Result<(), AppError> {
-        let tdb = TestPg::new(
-            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
-            std::path::Path::new("../migrations"),
-        );
+        let (tdb, _state) = AppState::new_for_test().await?;
 
         let pool = tdb.get_pool().await;
 
@@ -167,10 +160,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_fail_when_password_is_incorrect() -> Result<(), AppError> {
-        let tdb = TestPg::new(
-            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
-            std::path::Path::new("../migrations"),
-        );
+        let (tdb, _state) = AppState::new_for_test().await?;
 
         let pool = tdb.get_pool().await;
 
@@ -197,15 +187,12 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_fail_when_email_is_incorrect() -> Result<(), AppError> {
-        let tdb = TestPg::new(
-            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
-            std::path::Path::new("../migrations"),
-        );
+        let (tdb, _state) = AppState::new_for_test().await?;
+        let pool = tdb.get_pool().await;
 
         let email = "test@test.com";
         let password = "test";
 
-        let pool = tdb.get_pool().await;
         let _user = User::create(
             CreateUserPayload {
                 email: email.to_string(),
@@ -224,11 +211,7 @@ mod tests {
 
     #[tokio::test]
     async fn find_user_by_email_should_work() -> Result<(), AppError> {
-        let tdb = TestPg::new(
-            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
-            std::path::Path::new("../migrations"),
-        );
-
+        let (tdb, _state) = AppState::new_for_test().await?;
         let pool = tdb.get_pool().await;
 
         let email = "test@test.com";
