@@ -38,3 +38,55 @@ pub async fn verify_token(State(state): State<AppState>, req: Request, next: Nex
 
     next.run(req).await
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::AppState;
+    use anyhow::Result;
+    use axum::{
+        body::Body, http::HeaderValue, middleware::from_fn_with_state, routing::get, Router,
+    };
+    use tower::ServiceExt;
+
+    async fn handler(_req: Request) -> impl IntoResponse {
+        (StatusCode::OK, "ok").into_response()
+    }
+
+    #[tokio::test]
+    async fn verify_token_none_bearer_header_should_return_unauthorized() -> Result<()> {
+        let (_pg, state) = AppState::new_for_test().await?;
+        let app = Router::new().route(
+            "/api",
+            get(handler)
+                .layer(from_fn_with_state(state.clone(), verify_token))
+                .with_state(state),
+        );
+
+        let req = Request::builder().uri("/api").body(Body::empty())?;
+        let res = app.clone().oneshot(req).await?;
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn verify_token_invalid_bearer_header_should_return_forbidden() -> Result<()> {
+        let (_pg, state) = AppState::new_for_test().await?;
+        let app = Router::new().route(
+            "/api",
+            get(handler)
+                .layer(from_fn_with_state(state.clone(), verify_token))
+                .with_state(state),
+        );
+
+        let mut req = Request::builder().uri("/api").body(Body::empty())?;
+        req.headers_mut()
+            .insert("Authorization", HeaderValue::from_str("Bearer invalid")?);
+        let res = app.clone().oneshot(req).await?;
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+        Ok(())
+    }
+}
