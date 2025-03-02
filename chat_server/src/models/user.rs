@@ -110,7 +110,7 @@ mod tests {
     async fn create_user_should_work() -> Result<(), AppError> {
         // test by sqlx-db-tester
         let tdb = TestPg::new(
-            "postgres://jimmylu:@localhost:5432".to_string(),
+            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
             std::path::Path::new("../migrations"),
         );
         let pool = tdb.get_pool().await;
@@ -138,7 +138,7 @@ mod tests {
     #[tokio::test]
     async fn verify_user_should_work() -> Result<(), AppError> {
         let tdb = TestPg::new(
-            "postgres://jimmylu:@localhost:5432".to_string(),
+            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
             std::path::Path::new("../migrations"),
         );
 
@@ -168,7 +168,7 @@ mod tests {
     #[tokio::test]
     async fn verify_user_should_fail_when_password_is_incorrect() -> Result<(), AppError> {
         let tdb = TestPg::new(
-            "postgres://jimmylu:@localhost:5432".to_string(),
+            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
             std::path::Path::new("../migrations"),
         );
 
@@ -198,7 +198,7 @@ mod tests {
     #[tokio::test]
     async fn verify_user_should_fail_when_email_is_incorrect() -> Result<(), AppError> {
         let tdb = TestPg::new(
-            "postgres://jimmylu:@localhost:5432".to_string(),
+            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
             std::path::Path::new("../migrations"),
         );
 
@@ -225,7 +225,7 @@ mod tests {
     #[tokio::test]
     async fn find_user_by_email_should_work() -> Result<(), AppError> {
         let tdb = TestPg::new(
-            "postgres://jimmylu:@localhost:5432".to_string(),
+            "postgres://jimmylu:jimmylu@localhost:5432".to_string(),
             std::path::Path::new("../migrations"),
         );
 
