@@ -1,6 +1,7 @@
 mod config;
 mod error;
 mod handlers;
+mod middlewares;
 mod models;
 mod utils;
 
@@ -9,29 +10,24 @@ use std::{ops::Deref, sync::Arc};
 
 use anyhow::Context;
 use axum::{
+    middleware::from_fn_with_state,
     routing::{get, post},
     Router,
 };
 use handlers::*;
+use middlewares::verify_token;
 use sqlx::PgPool;
-use tower::ServiceBuilder;
-use tower_http::{
-    compression::CompressionLayer,
-    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
-    LatencyUnit,
-};
-use tracing::Level;
-use utils::{DecodingKey, EncodingKey};
+use utils::DecodingKey;
+use utils::EncodingKey;
 
 pub use config::AppConfig;
 pub use error::AppError;
 pub use models::User;
+
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     let state = AppState::try_new(config).await?;
 
     let api_router = Router::new()
-        .route("/signin", post(signin_handler))
-        .route("/signup", post(signup_handler))
         .route("/chat", get(list_chat_handler).post(create_chat_handler))
         .route(
             "/chat/{id}",
@@ -39,20 +35,9 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
                 .patch(update_chat_handler)
                 .delete(delete_chat_handler),
         )
-        .layer(
-            ServiceBuilder::new()
-                .layer(
-                    TraceLayer::new_for_http()
-                        .make_span_with(DefaultMakeSpan::new().include_headers(true))
-                        .on_request(DefaultOnRequest::new().level(Level::INFO))
-                        .on_response(
-                            DefaultOnResponse::new()
-                                .level(Level::INFO)
-                                .latency_unit(LatencyUnit::Micros),
-                        ),
-                )
-                .layer(CompressionLayer::new().gzip(true).br(true).deflate(true)),
-        );
+        .layer(from_fn_with_state(state.clone(), verify_token))
+        .route("/signin", post(signin_handler))
+        .route("/signup", post(signup_handler));
 
     let app = Router::new()
         .route("/", get(index))
