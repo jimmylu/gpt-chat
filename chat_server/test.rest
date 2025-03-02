@@ -1,6 +1,8 @@
 ### chat api
 
-POST  http://localhost:6688/api/signup
+@baseUrl = http://localhost:6688
+
+POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
 {
@@ -9,9 +11,9 @@ Content-Type: application/json
     "fullname": "luxixi"
 }
 
-### sign in
-
-POST http://localhost:6688/api/signin
+### sigin
+# @name signin
+POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
@@ -19,14 +21,18 @@ Content-Type: application/json
     "password": "1234567"
 }
 
+@token = {{signin.response.headers.authorization}}
+
 ### update chat
 
-PATCH http://localhost:6688/api/chat/1
+GET  {{baseUrl}}/api/chat
+Authorization: {{token}}
 
 ### delete chat
 
-DELETE http://localhost:6688/api/chat/1
+DELETE {{baseUrl}}/api/chat/1
+Authorization: {{token}}
 
 ### index
 
-GET http://localhost:6688/
+GET {{baseUrl}}
