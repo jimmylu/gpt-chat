@@ -96,7 +96,7 @@ mod tests {
     async fn verify_token_signed_should_work() -> Result<()> {
         let (_pg, state) = AppState::new_for_test().await?;
 
-        let user = User::new(1, "test".to_string(), "test@test.com".to_string());
+        let user = User::new(1, 1, "test".to_string(), "test@test.com".to_string());
         let token = state.sk.sign(user)?;
 
         let app = Router::new().route(

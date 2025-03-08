@@ -58,6 +58,7 @@ mod tests {
             email: "test@test.com".to_string(),
             fullname: "test".to_string(),
             password: "test".to_string(),
+            workspace: "Default".to_string(),
         };
         User::create(create_user, &state.pool).await?;
 
@@ -80,6 +81,7 @@ mod tests {
             email: "test@test.com".to_string(),
             fullname: "test".to_string(),
             password: "test".to_string(),
+            workspace: "Default".to_string(),
         };
         User::create(create_user, &state.pool).await?;
 
@@ -100,6 +102,7 @@ mod tests {
             email: "test@test.com".to_string(),
             fullname: "test".to_string(),
             password: "test".to_string(),
+            workspace: "Default".to_string(),
         };
         User::create(create_user, &state.pool).await?;
 
@@ -124,6 +127,7 @@ mod tests {
             email: "test@test.com".to_string(),
             fullname: "test".to_string(),
             password: "test".to_string(),
+            workspace: "Default".to_string(),
         };
         let res = signup_handler(State(state), Json(user.clone()))
             .await?
@@ -141,6 +145,7 @@ mod tests {
             email: "test@test.com".to_string(),
             fullname: "test".to_string(),
             password: "test".to_string(),
+            workspace: "Default".to_string(),
         };
         User::create(user.clone(), &state.pool).await?;
 

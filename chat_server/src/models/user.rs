@@ -7,13 +7,13 @@ use argon2::{
 };
 use sqlx::PgPool;
 
-use super::CreateUserPayload;
+use super::{CreateUserPayload, Workspace, DEFAULT_OWNER_ID};
 
 impl User {
     // find a user by email
     pub async fn find_by_email(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
         let user = sqlx::query_as(
-            "select id, fullname, email, created_at, updated_at from users where email = $1",
+            "select id, ws_id, fullname, email, created_at, updated_at from users where email = $1",
         )
         .bind(email)
         .fetch_optional(pool)
@@ -28,7 +28,7 @@ impl User {
         pool: &PgPool,
     ) -> Result<Option<Self>, AppError> {
         let user: Option<Self> = sqlx::query_as(
-            "select id, fullname, email, password_hash, created_at, updated_at from users where email = $1",
+            "select id, ws_id, fullname, email, password_hash, created_at, updated_at from users where email = $1",
         )
         .bind(email)
         .fetch_optional(pool)
@@ -48,10 +48,14 @@ impl User {
             None => Ok(None),
         }
     }
-
-    // create a new user
+    /// 创建用户的方法逻辑：
+    /// 1. 检查用户是否已存在，如果存在则返回错误。
+    /// 2. 检查工作区是否存在，如果不存在则创建一个新的工作区。
+    /// 3. 对用户密码进行哈希处理。
+    /// 4. 将用户信息插入到数据库中，并返回创建的用户。
+    /// 5. 如果工作区的拥有者是默认拥有者，则更新工作区的拥有者为新创建的用户。
+    // TODO: use transaction for workspace creation and user creation
     pub async fn create(input: CreateUserPayload, pool: &PgPool) -> Result<Self, AppError> {
-        let password_hash = hash_password(&input.password)?;
         let user: Option<Self> = sqlx::query_as("select * from users where email = $1")
             .bind(&input.email)
             .fetch_optional(pool)
@@ -59,12 +63,50 @@ impl User {
         if user.is_some() {
             return Err(AppError::UserAlreadyExists);
         }
-        let user = sqlx::query_as("insert into users (fullname, email, password_hash) values ($1, $2, $3) returning id, fullname, email, created_at, updated_at")
-            .bind(input.fullname)
-            .bind(input.email)
-            .bind(password_hash)
-            .fetch_one(pool)
-            .await?;
+
+        // if workspace is not provided, use the default workspace
+        let ws = match Workspace::get_by_name(&input.workspace, pool).await? {
+            Some(ws) => ws,
+            None => Workspace::create(&input.workspace, pool).await?,
+        };
+
+        let password_hash = hash_password(&input.password)?;
+
+        let user: Self = sqlx::query_as(
+            "insert into users (fullname, email, password_hash, ws_id) values ($1, $2, $3, $4) returning id, ws_id, fullname, email, created_at, updated_at",
+        )
+        .bind(input.fullname)
+        .bind(input.email)
+        .bind(password_hash)
+        .bind(ws.id)
+        .fetch_one(pool)
+        .await?;
+
+        // if workspace is not owned by the user, update the owner
+        if ws.owner_id == DEFAULT_OWNER_ID {
+            ws.update_owner(user.id as u64, pool).await?;
+        }
+
+        Ok(user)
+    }
+
+    pub async fn add_to_workspace(
+        &self,
+        workspace_id: i64,
+        pool: &PgPool,
+    ) -> Result<Self, AppError> {
+        let user = sqlx::query_as(
+            r#"
+            update users
+            set ws_id = $1
+            where id = $2 and ws_id = 1
+            returning id, ws_id, fullname, email, created_at, updated_at
+            "#,
+        )
+        .bind(workspace_id)
+        .bind(self.id)
+        .fetch_one(pool)
+        .await?;
         Ok(user)
     }
 }
@@ -119,6 +161,7 @@ mod tests {
             CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
+                workspace: "Default".to_string(),
                 password: password.to_string(),
             },
             &pool,
@@ -127,6 +170,29 @@ mod tests {
         assert_ne!(user.id, 0);
         assert_eq!(user.email, email);
         assert_eq!(user.fullname, fullname);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn create_user_and_update_owner_should_work() -> Result<(), AppError> {
+        let (tdb, _state) = AppState::new_for_test().await?;
+        let pool = tdb.get_pool().await;
+
+        let ws = Workspace::create("Test Workspace", &pool).await?;
+        let user = User::create(
+            CreateUserPayload {
+                email: "test@test.com".to_string(),
+                fullname: "test".to_string(),
+                workspace: ws.name.clone(),
+                password: "test".to_string(),
+            },
+            &pool,
+        )
+        .await?;
+
+        let ws = ws.update_owner(user.id as u64, &pool).await?;
+        assert_eq!(ws.owner_id, user.id);
 
         Ok(())
     }
@@ -145,6 +211,7 @@ mod tests {
             CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
+                workspace: "Default".to_string(),
                 password: password.to_string(),
             },
             &pool,
@@ -173,6 +240,7 @@ mod tests {
             CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
+                workspace: "Default".to_string(),
                 password: password.to_string(),
             },
             &pool,
@@ -197,6 +265,7 @@ mod tests {
             CreateUserPayload {
                 email: email.to_string(),
                 fullname: "test".to_string(),
+                workspace: "Default".to_string(),
                 password: password.to_string(),
             },
             &pool,
@@ -222,6 +291,7 @@ mod tests {
             CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
+                workspace: "Default".to_string(),
                 password: password.to_string(),
             },
             &pool,
@@ -232,6 +302,33 @@ mod tests {
         assert!(user.is_some());
         assert_eq!(user.clone().unwrap().email, email);
         assert_eq!(user.unwrap().fullname, fullname);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn add_to_workspace_should_work() -> Result<(), AppError> {
+        let (tdb, _state) = AppState::new_for_test().await?;
+        let pool = tdb.get_pool().await;
+
+        let user = User::create(
+            CreateUserPayload {
+                email: "test@test.com".to_string(),
+                fullname: "test".to_string(),
+                workspace: "Default".to_string(),
+                password: "test".to_string(),
+            },
+            &pool,
+        )
+        .await?;
+
+        let workspace = Workspace::create("Test Workspace", &pool).await?;
+        let user_1 = user.add_to_workspace(workspace.id, &pool).await?;
+        assert_eq!(user_1.id, user.id);
+        assert_eq!(user_1.ws_id, workspace.id);
+        let users = workspace.fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 1);
+        assert_eq!(users[0].id, user.id);
 
         Ok(())
     }

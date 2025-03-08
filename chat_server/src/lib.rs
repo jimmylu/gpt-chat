@@ -35,6 +35,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
                 .patch(update_chat_handler)
                 .delete(delete_chat_handler),
         )
+        .route("/users/{ws_name}", get(user_list_handler))
         .layer(from_fn_with_state(state.clone(), verify_token))
         .route("/signin", post(signin_handler))
         .route("/signup", post(signup_handler));

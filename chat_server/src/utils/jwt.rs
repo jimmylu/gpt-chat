@@ -57,7 +57,7 @@ mod tests {
         let encoding_key = EncodingKey::load(encoding_pem)?;
         let decoding_key = DecodingKey::load(decoding_pem)?;
 
-        let user = User::new(1, "test".to_string(), "test@test.com".to_string());
+        let user = User::new(1, 1, "test".to_string(), "test@test.com".to_string());
 
         let token = encoding_key.sign(user.clone())?;
 

@@ -24,6 +24,12 @@ pub enum AppError {
 
     #[error("user already exists")]
     UserAlreadyExists,
+
+    #[error("workspace already exists")]
+    WorkspaceAlreadyExists,
+
+    #[error("workspace not found")]
+    WorkspaceNotFound,
 }
 
 impl IntoResponse for AppError {
@@ -36,6 +42,8 @@ impl IntoResponse for AppError {
             AppError::UserNotFound => axum::http::StatusCode::NOT_FOUND,
             AppError::HttpHeaderError(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             AppError::UserAlreadyExists => axum::http::StatusCode::FORBIDDEN,
+            AppError::WorkspaceAlreadyExists => axum::http::StatusCode::FORBIDDEN,
+            AppError::WorkspaceNotFound => axum::http::StatusCode::NOT_FOUND,
         };
 
         let body = Json(json!({

@@ -8,7 +8,8 @@ Content-Type: application/json
 {
     "email": "luxixi@yahoo.com",
     "password": "1234567",
-    "fullname": "luxixi"
+    "fullname": "luxixi",
+    "workspace": "my_ws"
 }
 
 ### sigin
@@ -22,6 +23,10 @@ Content-Type: application/json
 }
 
 @token = {{signin.response.headers.authorization}}
+
+### get users
+GET {{baseUrl}}/api/users/my_ws
+Authorization: {{token}}
 
 ### update chat
 
