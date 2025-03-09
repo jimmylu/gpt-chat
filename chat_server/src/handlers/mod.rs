@@ -6,6 +6,7 @@ pub(crate) use auth::*;
 use axum::response::IntoResponse;
 
 pub(crate) use chat::*;
+pub(crate) use messages::*;
 pub(crate) use workspace::*;
 pub(crate) async fn index() -> impl IntoResponse {
     "Hello, World!"

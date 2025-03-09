@@ -7,7 +7,7 @@ use argon2::{
 };
 use sqlx::PgPool;
 
-use super::{CreateUserPayload, Workspace, DEFAULT_OWNER_ID};
+use super::{ChatUser, CreateUserPayload, Workspace, DEFAULT_OWNER_ID};
 
 impl User {
     // find a user by email
@@ -99,7 +99,7 @@ impl User {
             r#"
             update users
             set ws_id = $1
-            where id = $2 and ws_id = 1
+            where id = $2
             returning id, ws_id, fullname, email, created_at, updated_at
             "#,
         )
@@ -108,6 +108,38 @@ impl User {
         .fetch_one(pool)
         .await?;
         Ok(user)
+    }
+}
+
+impl ChatUser {
+    #[allow(unused)]
+    pub async fn fetch_by_ids(ids: &[i64], pool: &PgPool) -> Result<Vec<Self>, AppError> {
+        let users: Vec<ChatUser> = sqlx::query_as(
+            r#"
+            select id, fullname, email
+            from users
+            where id = any($1)
+            "#,
+        )
+        .bind(ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(users)
+    }
+    #[allow(unused)]
+    pub async fn fetch_all(ws_id: u64, pool: &PgPool) -> Result<Vec<Self>, AppError> {
+        let users: Vec<ChatUser> = sqlx::query_as(
+            r#"
+            select id, fullname, email
+            from users
+            where ws_id = $1
+            "#,
+        )
+        .bind(ws_id as i64)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(users)
     }
 }
 
@@ -306,20 +338,32 @@ mod tests {
             CreateUserPayload {
                 email: "test@test.com".to_string(),
                 fullname: "test".to_string(),
-                workspace: "Default".to_string(),
+                workspace: "Test ws".to_string(),
                 password: "test".to_string(),
             },
             &pool,
         )
         .await?;
 
-        let workspace = Workspace::create("Test Workspace", &pool).await?;
-        let user_1 = user.add_to_workspace(workspace.id, &pool).await?;
-        assert_eq!(user_1.id, user.id);
-        assert_eq!(user_1.ws_id, workspace.id);
-        let users = workspace.fetch_all_chat_users(&pool).await?;
-        assert_eq!(users.len(), 1);
-        assert_eq!(users[0].id, user.id);
+        assert_eq!(user.ws_id, 1);
+
+        let ws1 = Workspace::get_by_name("Test ws", &pool).await?;
+        let users = ws1.unwrap().fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 3);
+        let ws2 = Workspace::get_by_name("Test ws 2", &pool).await?;
+        let users = ws2.unwrap().fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 7);
+
+        let user = user.add_to_workspace(2, &pool).await?;
+
+        assert_eq!(user.ws_id, 2);
+        let ws1 = Workspace::get_by_name("Test ws", &pool).await?;
+        let users = ws1.unwrap().fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 2);
+
+        let ws2 = Workspace::get_by_name("Test ws 2", &pool).await?;
+        let users = ws2.unwrap().fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 8);
 
         Ok(())
     }

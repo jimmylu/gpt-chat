@@ -8,11 +8,11 @@ CREATE TABLE if not exists workspaces (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 -- insert default workspace
-INSERT INTO workspaces (name, owner_id) VALUES ('Default', 1);
+INSERT INTO workspaces (id, name, owner_id) VALUES (0, 'Default', 0);
 
 -- alter users table  to add workspace_id
 ALTER TABLE users
-    ADD COLUMN ws_id BIGINT REFERENCES workspaces(id) not null default 1;
+    ADD COLUMN ws_id BIGINT REFERENCES workspaces(id) not null default 0;
 
 -- alter chats table to add workspace_id
 ALTER TABLE chats

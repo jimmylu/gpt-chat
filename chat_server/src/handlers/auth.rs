@@ -41,7 +41,10 @@ pub(crate) async fn signin_handler(
                 "",
             ))
         }
-        None => Err(AppError::UserNotFound),
+        None => Err(AppError::NotFound(format!(
+            "User with email {} not found",
+            payload.email
+        ))),
     }
 }
 
@@ -90,7 +93,10 @@ mod tests {
             password: "test".to_string(),
         };
         let res = signin_handler(State(state), Json(user)).await;
-        matches!(res, Err(AppError::UserNotFound));
+        assert!(matches!(
+            res,
+            Err(AppError::NotFound(msg)) if msg == "User with email test1@test.com not found"
+        ));
         Ok(())
     }
 

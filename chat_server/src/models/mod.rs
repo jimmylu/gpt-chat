@@ -41,6 +41,13 @@ pub struct Chat {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct CreateChat {
+    pub name: Option<String>,
+    pub members: Vec<i64>,
+    pub public: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
 #[sqlx(type_name = "chat_type", rename_all = "snake_case")]
 pub enum ChatType {
@@ -53,9 +60,8 @@ pub enum ChatType {
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, PartialEq)]
 pub struct ChatUser {
     pub fullname: String,
-    pub workspace: String,
     pub email: String,
-    pub password: String,
+    pub id: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -9,7 +9,18 @@ Content-Type: application/json
     "email": "luxixi@yahoo.com",
     "password": "1234567",
     "fullname": "luxixi",
-    "workspace": "my_ws"
+    "workspace": "Default"
+}
+
+### create user
+POST {{baseUrl}}/api/signup
+Content-Type: application/json
+
+{
+    "email": "luchujun@gmail.com",
+    "password": "1234567",
+    "fullname": "luchujun",
+    "workspace": "Default"
 }
 
 ### sigin
@@ -30,12 +41,32 @@ Authorization: {{token}}
 
 ### update chat
 
-GET  {{baseUrl}}/api/chat
+GET  {{baseUrl}}/api/chats
+Authorization: {{token}}
+
+### create chat
+
+POST {{baseUrl}}/api/chats
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+    "name": "private chat",
+    "members": [1,2],
+    "public": false
+}
+
+### get chat by id
+GET {{baseUrl}}/api/chats/1
 Authorization: {{token}}
 
 ### delete chat
 
-DELETE {{baseUrl}}/api/chat/1
+DELETE {{baseUrl}}/api/chats/1
+Authorization: {{token}}
+
+### get users in workspace
+GET {{baseUrl}}/api/users/Default
 Authorization: {{token}}
 
 ### index

@@ -14,7 +14,7 @@ CREATE TABLE users (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 
 -- insert default user
-INSERT INTO users (fullname, email, password_hash) VALUES ('Default', 'default@default.com', 'default');
+INSERT INTO users (id, fullname, email, password_hash) VALUES (0, 'Default', 'default@default.com', 'default');
 
 -- create chat type if not exists for postgres: single, group, private_channel, public_channel
 DO $$

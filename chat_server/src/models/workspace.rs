@@ -88,7 +88,7 @@ mod tests {
         let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
         let ws = Workspace::get_by_name("Test ws", &pool).await?;
         assert!(ws.is_some());
-        assert_eq!(ws.unwrap().id, 2);
+        assert_eq!(ws.unwrap().id, 1);
         Ok(())
     }
 
@@ -105,11 +105,11 @@ mod tests {
         let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
         let ws = Workspace::get_by_name("Test ws", &pool).await?.unwrap();
         let users = ws.fetch_all_chat_users(&pool).await?;
-        assert_eq!(users.len(), 3);
+        assert_eq!(users.len(), 2);
 
         let ws = Workspace::get_by_name("Test ws 2", &pool).await?.unwrap();
         let users = ws.fetch_all_chat_users(&pool).await?;
-        assert_eq!(users.len(), 0);
+        assert_eq!(users.len(), 7);
         Ok(())
     }
 

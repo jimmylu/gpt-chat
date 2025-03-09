@@ -16,8 +16,8 @@ pub enum AppError {
     #[error("jwt encoding key error: {0}")]
     JwtError(#[from] jwt_simple::Error),
 
-    #[error("user not found")]
-    UserNotFound,
+    #[error("not found: {0}")]
+    NotFound(String),
 
     #[error("http header parse error: {0}")]
     HttpHeaderError(#[from] axum::http::header::InvalidHeaderValue),
@@ -30,6 +30,9 @@ pub enum AppError {
 
     #[error("workspace not found")]
     WorkspaceNotFound,
+
+    #[error("create chat error: {0}")]
+    CreateChatError(String),
 }
 
 impl IntoResponse for AppError {
@@ -39,11 +42,12 @@ impl IntoResponse for AppError {
             AppError::PasswordHashError(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             AppError::InvalidCredentials => axum::http::StatusCode::UNAUTHORIZED,
             AppError::JwtError(_) => axum::http::StatusCode::FORBIDDEN,
-            AppError::UserNotFound => axum::http::StatusCode::NOT_FOUND,
+            AppError::NotFound(_) => axum::http::StatusCode::NOT_FOUND,
             AppError::HttpHeaderError(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             AppError::UserAlreadyExists => axum::http::StatusCode::FORBIDDEN,
             AppError::WorkspaceAlreadyExists => axum::http::StatusCode::FORBIDDEN,
             AppError::WorkspaceNotFound => axum::http::StatusCode::NOT_FOUND,
+            AppError::CreateChatError(_) => axum::http::StatusCode::BAD_REQUEST,
         };
 
         let body = Json(json!({
