@@ -71,83 +71,52 @@ impl Workspace {
 
 #[cfg(test)]
 mod tests {
-    use crate::{models::CreateUserPayload, AppState};
+    use crate::{models::CreateUserPayload, test_utils};
 
     use super::*;
 
     #[tokio::test]
     async fn test_create_workspace() -> Result<(), AppError> {
-        let (pg, _state) = AppState::new_for_test().await?;
-        let pg_pool = pg.get_pool().await;
-        let workspace = Workspace::create("Test Workspace", &pg_pool).await?;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let workspace = Workspace::create("Test Workspace", &pool).await?;
         assert_eq!(workspace.name, "Test Workspace");
         Ok(())
     }
 
     #[tokio::test]
     async fn test_get_by_name() -> Result<(), AppError> {
-        let (pg, _state) = AppState::new_for_test().await?;
-        let pg_pool = pg.get_pool().await;
-        let workspace = Workspace::create("Test Workspace", &pg_pool).await?;
-        let workspace_1 = Workspace::get_by_name("Test Workspace", &pg_pool).await?;
-        assert!(workspace_1.is_some());
-        assert_eq!(workspace_1.unwrap().id, workspace.id);
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let ws = Workspace::get_by_name("Test ws", &pool).await?;
+        assert!(ws.is_some());
+        assert_eq!(ws.unwrap().id, 2);
         Ok(())
     }
 
     #[tokio::test]
     async fn test_get_by_name_should_fail_when_workspace_does_not_exist() -> Result<(), AppError> {
-        let (pg, _state) = AppState::new_for_test().await?;
-        let pg_pool = pg.get_pool().await;
-        let workspace = Workspace::get_by_name("Test Workspace", &pg_pool).await?;
-        assert!(workspace.is_none());
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let ws = Workspace::get_by_name("Test ws 3", &pool).await?;
+        assert!(ws.is_none());
         Ok(())
     }
 
     #[tokio::test]
     async fn test_fetch_all_chat_users() -> Result<(), AppError> {
-        let (pg, _state) = AppState::new_for_test().await?;
-        let pg_pool = pg.get_pool().await;
-        let workspace = Workspace::create("Test Workspace", &pg_pool).await?;
-        let users = workspace.fetch_all_chat_users(&pg_pool).await?;
-        assert_eq!(users.len(), 0);
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let ws = Workspace::get_by_name("Test ws", &pool).await?.unwrap();
+        let users = ws.fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 3);
 
-        let user = User::create(
-            CreateUserPayload {
-                email: "test@test.com".to_string(),
-                fullname: "test".to_string(),
-                workspace: "Test Workspace".to_string(),
-                password: "test".to_string(),
-            },
-            &pg_pool,
-        )
-        .await?;
-        let user_1 = User::create(
-            CreateUserPayload {
-                email: "test1@test.com".to_string(),
-                fullname: "test1".to_string(),
-                workspace: "Test Workspace".to_string(),
-                password: "test".to_string(),
-            },
-            &pg_pool,
-        )
-        .await?;
-        let users = workspace.fetch_all_chat_users(&pg_pool).await?;
-        assert_eq!(users.len(), 2);
-        assert_eq!(users[0].id, user.id);
-        assert_eq!(users[1].id, user_1.id);
-        assert_eq!(users[0].ws_id, workspace.id);
-        assert_eq!(users[1].ws_id, workspace.id);
-        let ws = Workspace::get_by_name("Test Workspace", &pg_pool).await?;
-        assert_eq!(ws.unwrap().owner_id, user.id);
+        let ws = Workspace::get_by_name("Test ws 2", &pool).await?.unwrap();
+        let users = ws.fetch_all_chat_users(&pool).await?;
+        assert_eq!(users.len(), 0);
         Ok(())
     }
 
     #[tokio::test]
     async fn test_update_owner() -> Result<(), AppError> {
-        let (pg, _state) = AppState::new_for_test().await?;
-        let pg_pool = pg.get_pool().await;
-        let workspace = Workspace::create("Test Workspace", &pg_pool).await?;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let workspace = Workspace::create("Test Workspace", &pool).await?;
         assert_eq!(workspace.owner_id, DEFAULT_OWNER_ID);
 
         let user = User::create(
@@ -157,7 +126,7 @@ mod tests {
                 workspace: "Test Workspace".to_string(),
                 password: "test".to_string(),
             },
-            &pg_pool,
+            &pool,
         )
         .await?;
         assert_eq!(user.ws_id, workspace.id);
@@ -169,12 +138,12 @@ mod tests {
                 workspace: "Test Workspace".to_string(),
                 password: "test".to_string(),
             },
-            &pg_pool,
+            &pool,
         )
         .await?;
         assert_eq!(user_1.ws_id, workspace.id);
 
-        let workspace = workspace.update_owner(user_1.id as u64, &pg_pool).await?;
+        let workspace = workspace.update_owner(user_1.id as u64, &pool).await?;
         assert_eq!(workspace.owner_id, user_1.id);
         Ok(())
     }

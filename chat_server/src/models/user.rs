@@ -134,7 +134,7 @@ pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppE
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AppState;
+    use crate::test_utils;
 
     #[tokio::test]
     async fn hash_password_and_verify_should_work() -> Result<(), AppError> {
@@ -150,8 +150,7 @@ mod tests {
     #[tokio::test]
     async fn create_user_should_work() -> Result<(), AppError> {
         // test by sqlx-db-tester
-        let (tdb, _state) = AppState::new_for_test().await?;
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let email = "test@test.com";
         let fullname = "test";
@@ -176,8 +175,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_and_update_owner_should_work() -> Result<(), AppError> {
-        let (tdb, _state) = AppState::new_for_test().await?;
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let ws = Workspace::create("Test Workspace", &pool).await?;
         let user = User::create(
@@ -199,9 +197,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_work() -> Result<(), AppError> {
-        let (tdb, _state) = AppState::new_for_test().await?;
-
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let email = "test@test.com";
         let fullname = "test";
@@ -227,9 +223,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_fail_when_password_is_incorrect() -> Result<(), AppError> {
-        let (tdb, _state) = AppState::new_for_test().await?;
-
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let email = "test@test.com";
         let fullname = "test";
@@ -255,8 +249,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_fail_when_email_is_incorrect() -> Result<(), AppError> {
-        let (tdb, _state) = AppState::new_for_test().await?;
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let email = "test@test.com";
         let password = "test";
@@ -280,8 +273,7 @@ mod tests {
 
     #[tokio::test]
     async fn find_user_by_email_should_work() -> Result<(), AppError> {
-        let (tdb, _state) = AppState::new_for_test().await?;
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let email = "test@test.com";
         let fullname = "test";
@@ -308,8 +300,7 @@ mod tests {
 
     #[tokio::test]
     async fn add_to_workspace_should_work() -> Result<(), AppError> {
-        let (tdb, _state) = AppState::new_for_test().await?;
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
 
         let user = User::create(
             CreateUserPayload {

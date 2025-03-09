@@ -14,4 +14,8 @@ INSERT INTO workspaces (name, owner_id) VALUES ('Default', 1);
 ALTER TABLE users
     ADD COLUMN ws_id BIGINT REFERENCES workspaces(id) not null default 1;
 
+-- alter chats table to add workspace_id
+ALTER TABLE chats
+    ADD COLUMN ws_id BIGINT REFERENCES workspaces(id);
+
 -- create default workspace
