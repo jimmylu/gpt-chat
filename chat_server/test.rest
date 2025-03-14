@@ -72,3 +72,30 @@ Authorization: {{token}}
 ### index
 
 GET {{baseUrl}}
+
+
+
+### post files
+POST {{baseUrl}}/api/messages/upload
+Authorization: {{token}}
+Content-Type: multipart/form-data;boundary=myboundary
+
+--myboundary
+Content-Disposition: form-data;filename="test.txt"
+Content-Type: text/plain
+
+test
+--myboundary
+Content-Disposition: form-data;filename="codecov.yml"
+Content-Type: application/octet-stream
+
+< /Users/jimmylu/Documents/opensource/cubejs/cube/codecov.yml
+--myboundary--
+
+### download file and path=/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d/txt
+GET {{baseUrl}}/api/files/0/a94/a8f/e5ccb19ba61c4c0873d391e987982fbbd3.txt
+Authorization: {{token}}
+
+### download file and path=/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d/codecov.yml
+GET {{baseUrl}}/api/files/0/3b5/562/a74f02a7d36ca7cb6b2ab86be5c8dac921.yml
+Authorization: {{token}}

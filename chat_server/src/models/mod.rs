@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 mod chat;
+mod file;
 mod user;
 mod workspace;
 
@@ -76,6 +77,12 @@ pub struct CreateUserPayload {
 pub struct SignInPayload {
     pub email: String,
     pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatFile {
+    pub ext: String,
+    pub hash: String,
 }
 
 #[cfg(test)]

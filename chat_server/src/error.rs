@@ -7,6 +7,9 @@ pub enum AppError {
     #[error("sql error: {0}")]
     SqlxError(#[from] sqlx::Error),
 
+    #[error("io error: {0}")]
+    IoError(#[from] std::io::Error),
+
     #[error("password hash error: {0}")]
     PasswordHashError(#[from] argon2::password_hash::Error),
 
@@ -33,6 +36,12 @@ pub enum AppError {
 
     #[error("create chat error: {0}")]
     CreateChatError(String),
+
+    #[error("upload file error: {0}")]
+    UploadFileError(#[from] axum::extract::multipart::MultipartError),
+
+    #[error("invalid file URL: {0}")]
+    InvalidFileURL(String),
 }
 
 impl IntoResponse for AppError {
@@ -48,6 +57,9 @@ impl IntoResponse for AppError {
             AppError::WorkspaceAlreadyExists => axum::http::StatusCode::FORBIDDEN,
             AppError::WorkspaceNotFound => axum::http::StatusCode::NOT_FOUND,
             AppError::CreateChatError(_) => axum::http::StatusCode::BAD_REQUEST,
+            AppError::IoError(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::UploadFileError(_) => axum::http::StatusCode::BAD_REQUEST,
+            AppError::InvalidFileURL(_) => axum::http::StatusCode::BAD_REQUEST,
         };
 
         let body = Json(json!({

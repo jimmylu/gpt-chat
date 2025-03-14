@@ -17,6 +17,7 @@ use axum::{
 use handlers::*;
 use middlewares::verify_token;
 use sqlx::PgPool;
+use tokio::fs;
 use utils::DecodingKey;
 use utils::EncodingKey;
 
@@ -37,6 +38,8 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
                 .post(send_message_handler),
         )
         .route("/chats/{id}/messages", get(list_message_handler))
+        .route("/messages/upload", post(upload_handler))
+        .route("/files/{ws_id}/{*file_url}", get(download_handler))
         .route("/users/{ws_name}", get(user_list_handler))
         .layer(from_fn_with_state(state.clone(), verify_token))
         .route("/signin", post(signin_handler))
@@ -57,6 +60,10 @@ pub(crate) struct AppState {
 
 impl AppState {
     pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
+        fs::create_dir_all(&config.server.base_dir)
+            .await
+            .context("create base dir failed")?;
+
         let sk = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
         let pk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
         let pool = PgPool::connect(&config.server.db_url)
@@ -76,9 +83,9 @@ impl AppState {
 #[allow(unused)]
 struct AppStateInner {
     config: AppConfig,
-    pub sk: EncodingKey,
-    pub pk: DecodingKey,
-    pub pool: PgPool,
+    sk: EncodingKey,
+    pk: DecodingKey,
+    pool: PgPool,
 }
 
 impl Deref for AppState {
