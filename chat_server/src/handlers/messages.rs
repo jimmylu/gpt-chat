@@ -43,7 +43,7 @@ pub(crate) async fn upload_handler(
             warn!("Failed to read multipart field");
             continue;
         };
-        let file = ChatFile::new(filename.to_string(), &data);
+        let file = ChatFile::new(ws_id.parse().unwrap(), filename, &data);
         let path = file.path(&base_dir);
         if path.exists() {
             info!("File already exists: {}", path.display());
@@ -51,7 +51,7 @@ pub(crate) async fn upload_handler(
             fs::create_dir_all(path.parent().expect("file path parent should exist")).await?;
             fs::write(path, data).await?;
         }
-        files.push(file.url(&ws_id));
+        files.push(file.url());
     }
     Ok(Json(files))
 }

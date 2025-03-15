@@ -42,6 +42,12 @@ pub enum AppError {
 
     #[error("invalid file URL: {0}")]
     InvalidFileURL(String),
+
+    #[error("create message error: {0}")]
+    CreateMessageError(String),
+
+    #[error("invalid chat file path: {0}")]
+    InvalidChatFilePath(String),
 }
 
 impl IntoResponse for AppError {
@@ -60,6 +66,8 @@ impl IntoResponse for AppError {
             AppError::IoError(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             AppError::UploadFileError(_) => axum::http::StatusCode::BAD_REQUEST,
             AppError::InvalidFileURL(_) => axum::http::StatusCode::BAD_REQUEST,
+            AppError::CreateMessageError(_) => axum::http::StatusCode::BAD_REQUEST,
+            AppError::InvalidChatFilePath(_) => axum::http::StatusCode::BAD_REQUEST,
         };
 
         let body = Json(json!({
