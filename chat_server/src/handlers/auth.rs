@@ -7,14 +7,14 @@ use axum::{
 
 use crate::{
     models::{CreateUserPayload, SignInPayload},
-    AppError, AppState, User,
+    AppError, AppState,
 };
 
 pub(crate) async fn signup_handler(
     State(state): State<AppState>,
     Json(payload): Json<CreateUserPayload>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = User::create(payload.clone(), &state.pool).await?;
+    let user = state.user_create(payload.clone()).await?;
 
     let token = state.sk.sign(user)?;
 
@@ -30,7 +30,7 @@ pub(crate) async fn signin_handler(
     State(state): State<AppState>,
     Json(payload): Json<SignInPayload>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = User::verify(&payload.email, &payload.password, &state.pool).await?;
+    let user = state.user_verify(&payload.email, &payload.password).await?;
 
     match user {
         Some(user) => {
@@ -63,7 +63,7 @@ mod tests {
             password: "test".to_string(),
             workspace: "Default".to_string(),
         };
-        User::create(create_user, &state.pool).await?;
+        state.user_create(create_user).await?;
 
         let user = SignInPayload {
             email: "test@test.com".to_string(),
@@ -86,7 +86,7 @@ mod tests {
             password: "test".to_string(),
             workspace: "Default".to_string(),
         };
-        User::create(create_user, &state.pool).await?;
+        state.user_create(create_user).await?;
 
         let user = SignInPayload {
             email: "test1@test.com".to_string(),
@@ -110,7 +110,7 @@ mod tests {
             password: "test".to_string(),
             workspace: "Default".to_string(),
         };
-        User::create(create_user, &state.pool).await?;
+        state.user_create(create_user).await?;
 
         let user = SignInPayload {
             email: "test@test.com".to_string(),
@@ -153,7 +153,7 @@ mod tests {
             password: "test".to_string(),
             workspace: "Default".to_string(),
         };
-        User::create(user.clone(), &state.pool).await?;
+        state.user_create(user.clone()).await?;
 
         let res = signup_handler(State(state), Json(user)).await;
         matches!(res, Err(AppError::UserAlreadyExists));

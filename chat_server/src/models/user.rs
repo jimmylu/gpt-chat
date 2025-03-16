@@ -1,37 +1,33 @@
 use std::mem;
 
-use crate::{AppError, User};
+use crate::{AppError, AppState, User};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use sqlx::PgPool;
 
-use super::{ChatUser, CreateUserPayload, Workspace, DEFAULT_OWNER_ID};
+use super::{ChatUser, CreateUserPayload, DEFAULT_OWNER_ID};
 
-impl User {
+impl AppState {
     // find a user by email
-    pub async fn find_by_email(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
+    #[allow(unused)]
+    pub async fn user_find_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
         let user = sqlx::query_as(
             "select id, ws_id, fullname, email, created_at, updated_at from users where email = $1",
         )
         .bind(email)
-        .fetch_optional(pool)
+        .fetch_optional(&self.pool)
         .await?;
         Ok(user)
     }
 
     // verify email and password
-    pub async fn verify(
-        email: &str,
-        password: &str,
-        pool: &PgPool,
-    ) -> Result<Option<Self>, AppError> {
-        let user: Option<Self> = sqlx::query_as(
+    pub async fn user_verify(&self, email: &str, password: &str) -> Result<Option<User>, AppError> {
+        let user: Option<User> = sqlx::query_as(
             "select id, ws_id, fullname, email, password_hash, created_at, updated_at from users where email = $1",
         )
         .bind(email)
-        .fetch_optional(pool)
+        .fetch_optional(&self.pool)
         .await?;
 
         match user {
@@ -55,46 +51,48 @@ impl User {
     /// 4. 将用户信息插入到数据库中，并返回创建的用户。
     /// 5. 如果工作区的拥有者是默认拥有者，则更新工作区的拥有者为新创建的用户。
     // TODO: use transaction for workspace creation and user creation
-    pub async fn create(input: CreateUserPayload, pool: &PgPool) -> Result<Self, AppError> {
-        let user: Option<Self> = sqlx::query_as("select * from users where email = $1")
+    pub async fn user_create(&self, input: CreateUserPayload) -> Result<User, AppError> {
+        let user: Option<User> = sqlx::query_as("select * from users where email = $1")
             .bind(&input.email)
-            .fetch_optional(pool)
+            .fetch_optional(&self.pool)
             .await?;
         if user.is_some() {
             return Err(AppError::UserAlreadyExists);
         }
 
         // if workspace is not provided, use the default workspace
-        let ws = match Workspace::get_by_name(&input.workspace, pool).await? {
+        let ws = match self.workspace_fetch_by_name(&input.workspace).await? {
             Some(ws) => ws,
-            None => Workspace::create(&input.workspace, pool).await?,
+            None => self.workspace_create(&input.workspace).await?,
         };
 
         let password_hash = hash_password(&input.password)?;
 
-        let user: Self = sqlx::query_as(
+        let user: User = sqlx::query_as(
             "insert into users (fullname, email, password_hash, ws_id) values ($1, $2, $3, $4) returning id, ws_id, fullname, email, created_at, updated_at",
         )
         .bind(input.fullname)
         .bind(input.email)
         .bind(password_hash)
         .bind(ws.id)
-        .fetch_one(pool)
+        .fetch_one(&self.pool)
         .await?;
 
         // if workspace is not owned by the user, update the owner
         if ws.owner_id == DEFAULT_OWNER_ID {
-            ws.update_owner(user.id as u64, pool).await?;
+            self.workspace_owner_update(ws.id as u64, user.id as u64)
+                .await?;
         }
 
         Ok(user)
     }
 
-    pub async fn add_to_workspace(
+    #[allow(unused)]
+    pub async fn user_added_to_workspace(
         &self,
+        user_id: i64,
         workspace_id: i64,
-        pool: &PgPool,
-    ) -> Result<Self, AppError> {
+    ) -> Result<User, AppError> {
         let user = sqlx::query_as(
             r#"
             update users
@@ -104,16 +102,14 @@ impl User {
             "#,
         )
         .bind(workspace_id)
-        .bind(self.id)
-        .fetch_one(pool)
+        .bind(user_id)
+        .fetch_one(&self.pool)
         .await?;
         Ok(user)
     }
-}
 
-impl ChatUser {
     #[allow(unused)]
-    pub async fn fetch_by_ids(ids: &[i64], pool: &PgPool) -> Result<Vec<Self>, AppError> {
+    pub async fn user_fetched_by_ids(&self, ids: &[i64]) -> Result<Vec<ChatUser>, AppError> {
         let users: Vec<ChatUser> = sqlx::query_as(
             r#"
             select id, fullname, email
@@ -122,12 +118,12 @@ impl ChatUser {
             "#,
         )
         .bind(ids)
-        .fetch_all(pool)
+        .fetch_all(&self.pool)
         .await?;
         Ok(users)
     }
     #[allow(unused)]
-    pub async fn fetch_all(ws_id: u64, pool: &PgPool) -> Result<Vec<Self>, AppError> {
+    pub async fn user_fetched_all_by_ws_id(&self, ws_id: u64) -> Result<Vec<ChatUser>, AppError> {
         let users: Vec<ChatUser> = sqlx::query_as(
             r#"
             select id, fullname, email
@@ -136,7 +132,7 @@ impl ChatUser {
             "#,
         )
         .bind(ws_id as i64)
-        .fetch_all(pool)
+        .fetch_all(&self.pool)
         .await?;
 
         Ok(users)
@@ -166,7 +162,6 @@ pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppE
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils;
 
     #[tokio::test]
     async fn hash_password_and_verify_should_work() -> Result<(), AppError> {
@@ -182,22 +177,20 @@ mod tests {
     #[tokio::test]
     async fn create_user_should_work() -> Result<(), AppError> {
         // test by sqlx-db-tester
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
         let email = "test@test.com";
         let fullname = "test";
         let password = "test";
 
-        let user = User::create(
-            CreateUserPayload {
+        let user = state
+            .user_create(CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
                 workspace: "Default".to_string(),
                 password: password.to_string(),
-            },
-            &pool,
-        )
-        .await?;
+            })
+            .await?;
         assert_ne!(user.id, 0);
         assert_eq!(user.email, email);
         assert_eq!(user.fullname, fullname);
@@ -207,21 +200,21 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_and_update_owner_should_work() -> Result<(), AppError> {
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
-        let ws = Workspace::create("Test Workspace", &pool).await?;
-        let user = User::create(
-            CreateUserPayload {
+        let ws = state.workspace_create("Test Workspace").await?;
+        let user = state
+            .user_create(CreateUserPayload {
                 email: "test@test.com".to_string(),
                 fullname: "test".to_string(),
                 workspace: ws.name.clone(),
                 password: "test".to_string(),
-            },
-            &pool,
-        )
-        .await?;
+            })
+            .await?;
 
-        let ws = ws.update_owner(user.id as u64, &pool).await?;
+        let ws = state
+            .workspace_owner_update(ws.id as u64, user.id as u64)
+            .await?;
         assert_eq!(ws.owner_id, user.id);
 
         Ok(())
@@ -229,24 +222,22 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_work() -> Result<(), AppError> {
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
         let email = "test@test.com";
         let fullname = "test";
         let password = "test";
 
-        let user = User::create(
-            CreateUserPayload {
+        let user = state
+            .user_create(CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
                 workspace: "Default".to_string(),
                 password: password.to_string(),
-            },
-            &pool,
-        )
-        .await?;
+            })
+            .await?;
 
-        let user_1 = User::verify(email, password, &pool).await?;
+        let user_1 = state.user_verify(email, password).await?;
         assert!(user_1.is_some());
         assert_eq!(user_1.unwrap().id, user.id);
 
@@ -255,25 +246,23 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_fail_when_password_is_incorrect() -> Result<(), AppError> {
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
         let email = "test@test.com";
         let fullname = "test";
         let password = "test";
         let wrong_password = "wrong";
 
-        let _user = User::create(
-            CreateUserPayload {
+        let _user = state
+            .user_create(CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
                 workspace: "Default".to_string(),
                 password: password.to_string(),
-            },
-            &pool,
-        )
-        .await;
+            })
+            .await;
 
-        let result = User::verify(email, wrong_password, &pool).await;
+        let result = state.user_verify(email, wrong_password).await;
         matches!(result, Err(AppError::InvalidCredentials));
 
         Ok(())
@@ -281,48 +270,44 @@ mod tests {
 
     #[tokio::test]
     async fn verify_user_should_fail_when_email_is_incorrect() -> Result<(), AppError> {
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
         let email = "test@test.com";
         let password = "test";
 
-        let _user = User::create(
-            CreateUserPayload {
+        let _user = state
+            .user_create(CreateUserPayload {
                 email: email.to_string(),
                 fullname: "test".to_string(),
                 workspace: "Default".to_string(),
                 password: password.to_string(),
-            },
-            &pool,
-        )
-        .await?;
+            })
+            .await?;
 
         let wrong_email = "wrong@test.com";
-        let user_1 = User::verify(wrong_email, password, &pool).await?;
+        let user_1 = state.user_verify(wrong_email, password).await?;
         assert!(user_1.is_none());
         Ok(())
     }
 
     #[tokio::test]
     async fn find_user_by_email_should_work() -> Result<(), AppError> {
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
         let email = "test@test.com";
         let fullname = "test";
         let password = "test";
 
-        let _user = User::create(
-            CreateUserPayload {
+        let _user = state
+            .user_create(CreateUserPayload {
                 email: email.to_string(),
                 fullname: fullname.to_string(),
                 workspace: "Default".to_string(),
                 password: password.to_string(),
-            },
-            &pool,
-        )
-        .await?;
+            })
+            .await?;
 
-        let user = User::find_by_email(email, &pool).await?;
+        let user = state.user_find_by_email(email).await?;
         assert!(user.is_some());
         assert_eq!(user.clone().unwrap().email, email);
         assert_eq!(user.unwrap().fullname, fullname);
@@ -332,37 +317,43 @@ mod tests {
 
     #[tokio::test]
     async fn add_to_workspace_should_work() -> Result<(), AppError> {
-        let (_tdb, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
-        let user = User::create(
-            CreateUserPayload {
+        let user = state
+            .user_create(CreateUserPayload {
                 email: "test@test.com".to_string(),
                 fullname: "test".to_string(),
                 workspace: "Test ws".to_string(),
                 password: "test".to_string(),
-            },
-            &pool,
-        )
-        .await?;
+            })
+            .await?;
 
         assert_eq!(user.ws_id, 1);
 
-        let ws1 = Workspace::get_by_name("Test ws", &pool).await?;
-        let users = ws1.unwrap().fetch_all_chat_users(&pool).await?;
+        let ws1 = state.workspace_fetch_by_name("Test ws").await?;
+        let users = state
+            .user_fetched_all_by_ws_id(ws1.unwrap().id as u64)
+            .await?;
         assert_eq!(users.len(), 3);
-        let ws2 = Workspace::get_by_name("Test ws 2", &pool).await?;
-        let users = ws2.unwrap().fetch_all_chat_users(&pool).await?;
+        let ws2 = state.workspace_fetch_by_name("Test ws 2").await?;
+        let users = state
+            .user_fetched_all_by_ws_id(ws2.unwrap().id as u64)
+            .await?;
         assert_eq!(users.len(), 7);
 
-        let user = user.add_to_workspace(2, &pool).await?;
+        let user = state.user_added_to_workspace(user.id, 2).await?;
 
         assert_eq!(user.ws_id, 2);
-        let ws1 = Workspace::get_by_name("Test ws", &pool).await?;
-        let users = ws1.unwrap().fetch_all_chat_users(&pool).await?;
+        let ws1 = state.workspace_fetch_by_name("Test ws").await?;
+        let users = state
+            .user_fetched_all_by_ws_id(ws1.unwrap().id as u64)
+            .await?;
         assert_eq!(users.len(), 2);
 
-        let ws2 = Workspace::get_by_name("Test ws 2", &pool).await?;
-        let users = ws2.unwrap().fetch_all_chat_users(&pool).await?;
+        let ws2 = state.workspace_fetch_by_name("Test ws 2").await?;
+        let users = state
+            .user_fetched_all_by_ws_id(ws2.unwrap().id as u64)
+            .await?;
         assert_eq!(users.len(), 8);
 
         Ok(())

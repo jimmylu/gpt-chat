@@ -1,19 +1,10 @@
-use sqlx::{Pool, Postgres};
-
-use crate::{
-    models::{ChatType, ChatUser},
-    AppError,
-};
+use crate::{models::ChatType, AppError, AppState};
 
 use super::{Chat, CreateChat};
 
-impl Chat {
+impl AppState {
     #[allow(unused)]
-    pub async fn create(
-        ws_id: u64,
-        input: CreateChat,
-        pool: &Pool<Postgres>,
-    ) -> Result<Chat, AppError> {
+    pub async fn chat_create(&self, ws_id: u64, input: CreateChat) -> Result<Chat, AppError> {
         let len = input.members.len();
         if len < 2 {
             return Err(AppError::CreateChatError(
@@ -25,7 +16,7 @@ impl Chat {
                 "Group chat with more than 8 members must have a name".to_string(),
             ));
         }
-        let users = ChatUser::fetch_by_ids(&input.members, pool).await?;
+        let users = self.user_fetched_by_ids(&input.members).await?;
         if users.len() != len {
             return Err(AppError::CreateChatError(
                 "One or more members do not exist".to_string(),
@@ -54,35 +45,35 @@ impl Chat {
         .bind(input.name)
         .bind(chat_type)
         .bind(input.members)
-        .fetch_one(pool)
+        .fetch_one(&self.pool)
         .await?;
 
         Ok(chat)
     }
 
     #[allow(unused)]
-    pub async fn fetch_all(ws_id: u64, pool: &Pool<Postgres>) -> Result<Vec<Chat>, AppError> {
+    pub async fn chat_fetched_all_by_ws_id(&self, ws_id: u64) -> Result<Vec<Chat>, AppError> {
         let chats = sqlx::query_as(
             r#"
             SELECT * FROM chats WHERE ws_id = $1
             "#,
         )
         .bind(ws_id as i64)
-        .fetch_all(pool)
+        .fetch_all(&self.pool)
         .await?;
 
         Ok(chats)
     }
 
     #[allow(unused)]
-    pub async fn get_by_id(id: i64, pool: &Pool<Postgres>) -> Result<Option<Chat>, AppError> {
+    pub async fn chat_fetched_by_id(&self, id: i64) -> Result<Option<Chat>, AppError> {
         let chat = sqlx::query_as(
             r#"
             SELECT * FROM chats WHERE id = $1
             "#,
         )
         .bind(id)
-        .fetch_optional(pool)
+        .fetch_optional(&self.pool)
         .await?;
 
         Ok(chat)
@@ -92,23 +83,21 @@ impl Chat {
 #[cfg(test)]
 mod tests {
 
-    use crate::test_utils;
-
     use super::*;
 
     #[tokio::test]
     async fn test_create_chat_group_should_work() -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chat = Chat::create(
-            2,
-            CreateChat {
-                name: None,
-                members: vec![1, 2, 3],
-                public: false,
-            },
-            &pool,
-        )
-        .await?;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chat = state
+            .chat_create(
+                2,
+                CreateChat {
+                    name: None,
+                    members: vec![1, 2, 3],
+                    public: false,
+                },
+            )
+            .await?;
         assert_eq!(chat.r#type, ChatType::Group);
         assert_eq!(chat.members.len(), 3);
         assert_eq!(chat.name, None);
@@ -119,17 +108,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_chat_single_should_work() -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chat = Chat::create(
-            2,
-            CreateChat {
-                name: None,
-                members: vec![1, 2],
-                public: false,
-            },
-            &pool,
-        )
-        .await?;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chat = state
+            .chat_create(
+                2,
+                CreateChat {
+                    name: None,
+                    members: vec![1, 2],
+                    public: false,
+                },
+            )
+            .await?;
         assert_eq!(chat.r#type, ChatType::Single);
         assert_eq!(chat.members.len(), 2);
         assert_eq!(chat.name, None);
@@ -140,17 +129,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_chat_public_channel_should_work() -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chat = Chat::create(
-            2,
-            CreateChat {
-                name: Some("Public Channel".to_string()),
-                members: vec![1, 2],
-                public: true,
-            },
-            &pool,
-        )
-        .await?;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chat = state
+            .chat_create(
+                2,
+                CreateChat {
+                    name: Some("Public Channel".to_string()),
+                    members: vec![1, 2],
+                    public: true,
+                },
+            )
+            .await?;
         assert_eq!(chat.r#type, ChatType::PublicChannel);
         assert_eq!(chat.members.len(), 2);
         assert_eq!(chat.name, Some("Public Channel".to_string()));
@@ -161,17 +150,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_chat_should_fail_when_members_do_not_exist() -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chat = Chat::create(
-            2,
-            CreateChat {
-                name: None,
-                members: vec![1, 2, 3, 10],
-                public: false,
-            },
-            &pool,
-        )
-        .await;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chat = state
+            .chat_create(
+                2,
+                CreateChat {
+                    name: None,
+                    members: vec![1, 2, 3, 10],
+                    public: false,
+                },
+            )
+            .await;
         assert!(matches!(
             chat,
             Err(AppError::CreateChatError(msg)) if msg == "One or more members do not exist"
@@ -183,17 +172,17 @@ mod tests {
     #[tokio::test]
     async fn test_create_chat_should_fail_when_group_chat_has_more_than_8_members(
     ) -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chat = Chat::create(
-            2,
-            CreateChat {
-                name: None,
-                members: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                public: false,
-            },
-            &pool,
-        )
-        .await;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chat = state
+            .chat_create(
+                2,
+                CreateChat {
+                    name: None,
+                    members: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                    public: false,
+                },
+            )
+            .await;
         assert!(matches!(
             chat,
             Err(AppError::CreateChatError(msg)) if msg == "Group chat with more than 8 members must have a name"
@@ -204,17 +193,17 @@ mod tests {
     #[tokio::test]
     async fn test_create_chat_should_fail_when_group_chat_has_more_than_8_members_and_name_is_provided(
     ) -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chat = Chat::create(
-            2,
-            CreateChat {
-                name: None,
-                members: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                public: false,
-            },
-            &pool,
-        )
-        .await;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chat = state
+            .chat_create(
+                2,
+                CreateChat {
+                    name: None,
+                    members: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                    public: false,
+                },
+            )
+            .await;
         assert!(matches!(
             chat,
             Err(AppError::CreateChatError(msg)) if msg == "Group chat with more than 8 members must have a name"
@@ -224,9 +213,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_chat_get_by_id_should_work() -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
+        let (_tdb, state) = AppState::new_for_test().await?;
 
-        let chat = Chat::get_by_id(1, &pool).await?;
+        let chat = state.chat_fetched_by_id(1).await?;
         assert!(chat.is_some());
         let chat = chat.unwrap();
         assert_eq!(chat.id, 1);
@@ -240,11 +229,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_chat_fetch_all_should_work() -> Result<(), AppError> {
-        let (_pg, pool) = test_utils::get_pg_and_pool(None).await;
-        let chats = Chat::fetch_all(1, &pool).await?;
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let chats = state.chat_fetched_all_by_ws_id(1).await?;
         assert_eq!(chats.len(), 4);
 
-        let chats = Chat::fetch_all(4, &pool).await?;
+        let chats = state.chat_fetched_all_by_ws_id(4).await?;
         assert_eq!(chats.len(), 0);
         Ok(())
     }

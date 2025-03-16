@@ -13,11 +13,6 @@ use tracing::{info, warn};
 use crate::{models::ChatFile, AppError, AppState, User};
 
 #[allow(unused)]
-pub(crate) async fn create_message_handler() -> impl IntoResponse {
-    "create_message"
-}
-
-#[allow(unused)]
 pub(crate) async fn update_message_handler() -> impl IntoResponse {
     "update_message"
 }

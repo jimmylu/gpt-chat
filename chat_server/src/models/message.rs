@@ -4,7 +4,7 @@ use super::{CreateMessage, Message};
 
 impl AppState {
     #[allow(unused)]
-    pub async fn create_message(
+    pub async fn message_create(
         &self,
         input: CreateMessage,
         sender_id: u64,

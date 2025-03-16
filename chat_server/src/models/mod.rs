@@ -12,7 +12,7 @@ mod message;
 mod user;
 mod workspace;
 
-const DEFAULT_OWNER_ID: i64 = 1;
+const DEFAULT_OWNER_ID: i64 = 0;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, PartialEq)]
 pub struct User {

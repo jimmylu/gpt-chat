@@ -107,8 +107,11 @@ impl fmt::Debug for AppStateInner {
 
 #[cfg(test)]
 mod test_utils {
+
     use sqlx::Executor;
     use sqlx_db_tester::TestPg;
+
+    use crate::models::{Chat, Workspace};
 
     use super::*;
 
@@ -136,7 +139,7 @@ mod test_utils {
         }
     }
 
-    pub async fn get_pg_and_pool(url: Option<&str>) -> (TestPg, PgPool) {
+    async fn get_pg_and_pool(url: Option<&str>) -> (TestPg, PgPool) {
         let url = url.unwrap_or("postgres://jimmylu:jimmylu@localhost:5432");
         let tdb = TestPg::new(url.to_string(), std::path::Path::new("../migrations"));
         let pool = tdb.get_pool().await;
@@ -153,5 +156,30 @@ mod test_utils {
         ts.commit().await.expect("commit tx failed");
 
         (tdb, pool)
+    }
+
+    #[tokio::test]
+    async fn test_get_pg_and_pool_should_work() -> Result<(), AppError> {
+        let (tdb, pool) = get_pg_and_pool(None).await;
+        assert_eq!(
+            tdb.server_url(),
+            "postgres://jimmylu:jimmylu@localhost:5432"
+        );
+        let users = sqlx::query_as::<_, User>("select * from users")
+            .fetch_all(&pool)
+            .await?;
+        assert_eq!(users.len(), 10);
+
+        let workspaces = sqlx::query_as::<_, Workspace>("select * from workspaces")
+            .fetch_all(&pool)
+            .await?;
+        assert_eq!(workspaces.len(), 3);
+
+        let chats = sqlx::query_as::<_, Chat>("select * from chats")
+            .fetch_all(&pool)
+            .await?;
+        assert_eq!(chats.len(), 8);
+
+        Ok(())
     }
 }
