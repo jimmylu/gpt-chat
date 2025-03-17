@@ -68,8 +68,8 @@ pub struct Message {
     pub id: i64,
     pub chat_id: i64,
     pub sender_id: i64,
-    pub content: String,
-    pub files: Vec<String>,
+    pub content: Option<String>,
+    pub files: Option<Vec<String>>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -107,6 +107,12 @@ pub struct CreateMessage {
     pub files: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListMessages {
+    pub last_id: Option<u64>,
+    pub limit: u64,
+}
+
 #[cfg(test)]
 impl User {
     pub fn new(id: i64, ws_id: i64, fullname: String, email: String) -> Self {
@@ -125,12 +131,12 @@ impl User {
 impl FromStr for ChatFile {
     type Err = AppError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(file_url: &str) -> Result<Self, Self::Err> {
         // file format: /files/0/a94/a8f/e5ccb19ba61c4c0873d391e987982fbbd3.txt
-        let Some(s) = s.strip_prefix("/files/") else {
+        let Some(s) = file_url.strip_prefix("/files/") else {
             return Err(AppError::InvalidChatFilePath(format!(
                 "Invalid chat file path {}",
-                s
+                file_url
             )));
         };
 
@@ -139,7 +145,7 @@ impl FromStr for ChatFile {
         if parts.len() != 4 {
             return Err(AppError::InvalidChatFilePath(format!(
                 "Invalid chat file path {}",
-                s
+                file_url
             )));
         }
 
@@ -152,7 +158,7 @@ impl FromStr for ChatFile {
         let Some((part3, ext)) = parts[3].split_once('.') else {
             return Err(AppError::InvalidChatFilePath(format!(
                 "Invalid chat file path {}",
-                s
+                file_url
             )));
         };
 

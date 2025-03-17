@@ -6,9 +6,9 @@ POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
 {
-    "email": "luxixi@yahoo.com",
+    "email": "luxiaojun@yahoo.com",
     "password": "1234567",
-    "fullname": "luxixi",
+    "fullname": "luxiaojun",
     "workspace": "Default"
 }
 
@@ -17,9 +17,9 @@ POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
 {
-    "email": "luchujun@gmail.com",
+    "email": "wangwu@gmail.com",
     "password": "1234567",
-    "fullname": "luchujun",
+    "fullname": "wangwu",
     "workspace": "Default"
 }
 
@@ -29,7 +29,7 @@ POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
-    "email": "luxixi@yahoo.com",
+    "email": "luchujun@gmail.com",
     "password": "1234567"
 }
 
@@ -76,7 +76,7 @@ GET {{baseUrl}}
 
 
 ### post files
-POST {{baseUrl}}/api/messages/upload
+POST {{baseUrl}}/api/upload
 Authorization: {{token}}
 Content-Type: multipart/form-data;boundary=myboundary
 
@@ -98,4 +98,33 @@ Authorization: {{token}}
 
 ### download file and path=/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d/codecov.yml
 GET {{baseUrl}}/api/files/0/3b5/562/a74f02a7d36ca7cb6b2ab86be5c8dac921.yml
+Authorization: {{token}}
+
+
+### create chat
+POST {{baseUrl}}/api/chats
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+    "name": "private chat",
+    "members": [3,4,5],
+    "public": false
+}
+
+
+### send message
+POST {{baseUrl}}/api/chats/2
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+    "content": "hello",
+    "files": ["/files/0/3b5/562/a74f02a7d36ca7cb6b2ab86be5c8dac921.yml"]
+}
+
+
+
+### get messages
+GET {{baseUrl}}/api/chats/2/messages?last_id=20&limit=10
 Authorization: {{token}}

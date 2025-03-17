@@ -6,15 +6,13 @@ CREATE TABLE users (
     email VARCHAR(100) NOT NULL UNIQUE,
     -- hashed argon2 password
     password_hash VARCHAR(255) NOT NULL,
+    ws_id BIGINT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- create index for users for email
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
-
--- insert default user
-INSERT INTO users (id, fullname, email, password_hash) VALUES (0, 'Default', 'default@default.com', 'default');
 
 -- create chat type if not exists for postgres: single, group, private_channel, public_channel
 DO $$
@@ -24,9 +22,20 @@ BEGIN
     END IF;
 END $$;
 
+
+CREATE TABLE if not exists workspaces (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    owner_id BIGINT not NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- create table for chat
 CREATE TABLE IF NOT EXISTS chats (
     id BIGSERIAL PRIMARY KEY,
+    ws_id BIGINT NOT NULL REFERENCES workspaces(id),
     name VARCHAR(64),
     type chat_type NOT NULL,
     -- user id list
@@ -43,6 +52,7 @@ CREATE TABLE IF NOT EXISTS messages (
     files TEXT[],
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- create index for messages for chat_id and created_at order by created_at desc
 CREATE INDEX IF NOT EXISTS idx_messages_chat_id_created_at ON messages (chat_id, created_at DESC);

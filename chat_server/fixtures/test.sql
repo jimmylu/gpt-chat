@@ -32,3 +32,25 @@ VALUES ('Test Chat 3', 1, 'group', ARRAY[1, 2]),
 insert into chats(ws_id, type, members)
 VALUES (1, 'group', ARRAY[1, 2]),
 (2, 'group', ARRAY[3, 4, 5]);
+
+-- insert 10 messages
+insert into messages(chat_id, content, sender_id)
+VALUES (1, 'Hello, world1!', 1),
+(1, 'Hello, world2!', 2),
+(1, 'Hello, world3!', 3),
+(1, 'Hello, world4!', 4),
+(1, 'Hello, world5!', 5);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world6!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world8!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world9!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world10!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world11!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world11!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);
+insert into messages(chat_id, content, sender_id, files)
+VALUES (1, 'Hello, world12!', 1, ARRAY['/files/1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt']);

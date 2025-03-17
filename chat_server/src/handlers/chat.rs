@@ -44,7 +44,3 @@ pub(crate) async fn update_chat_handler() -> Result<impl IntoResponse, AppError>
 pub(crate) async fn delete_chat_handler() -> Result<impl IntoResponse, AppError> {
     Ok("delete_chat")
 }
-
-pub(crate) async fn send_message_handler() -> Result<impl IntoResponse, AppError> {
-    Ok("send_message")
-}

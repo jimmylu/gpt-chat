@@ -16,7 +16,7 @@ impl ChatFile {
     }
 
     pub fn url(&self) -> String {
-        format!("/files/{}/{}", self.ws_id, self.hash_to_path())
+        format!("/files/{}", self.hash_to_path())
     }
 
     pub fn path(&self, base_dir: &Path) -> PathBuf {
@@ -31,7 +31,7 @@ impl ChatFile {
     pub fn hash_to_path(&self) -> String {
         let (part1, part2) = self.hash.split_at(3);
         let (part2, part3) = part2.split_at(3);
-        format!("{}/{}/{}.{}", part1, part2, part3, self.ext)
+        format!("{}/{}/{}/{}.{}", self.ws_id, part1, part2, part3, self.ext)
     }
 }
 
@@ -44,7 +44,7 @@ mod tests {
         let file = ChatFile::new(1, "test.txt".to_string(), b"hello");
         assert_eq!(
             file.hash_to_path(),
-            "aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt"
+            "1/aaf/4c6/1ddcc5e8a2dabede0f3b482cd9aea9434d.txt"
         );
     }
 

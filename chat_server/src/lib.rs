@@ -15,7 +15,7 @@ use axum::{
     Router,
 };
 use handlers::*;
-use middlewares::verify_token;
+use middlewares::{verify_chat, verify_token};
 use sqlx::PgPool;
 use tokio::fs;
 use utils::DecodingKey;
@@ -28,19 +28,23 @@ pub use models::User;
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     let state = AppState::try_new(config).await?;
 
-    let api_router = Router::new()
-        .route("/chats", get(list_chat_handler).post(create_chat_handler))
+    let chat = Router::new()
         .route(
-            "/chats/{id}",
+            "/{id}",
             get(get_chat_handler)
+                .post(send_message_handler)
                 .patch(update_chat_handler)
-                .delete(delete_chat_handler)
-                .post(send_message_handler),
+                .delete(delete_chat_handler),
         )
-        .route("/chats/{id}/messages", get(list_message_handler))
-        .route("/messages/upload", post(upload_handler))
-        .route("/files/{ws_id}/{*file_url}", get(download_handler))
+        .route("/{id}/messages", get(list_message_handler))
+        .layer(from_fn_with_state(state.clone(), verify_chat))
+        .route("/", get(list_chat_handler).post(create_chat_handler));
+
+    let api_router = Router::new()
+        .nest("/chats", chat)
         .route("/users/{ws_name}", get(user_list_handler))
+        .route("/upload", post(upload_handler))
+        .route("/files/{ws_id}/{*file_url}", get(download_handler))
         .layer(from_fn_with_state(state.clone(), verify_token))
         .route("/signin", post(signin_handler))
         .route("/signup", post(signup_handler));
@@ -178,7 +182,7 @@ mod test_utils {
         let chats = sqlx::query_as::<_, Chat>("select * from chats")
             .fetch_all(&pool)
             .await?;
-        assert_eq!(chats.len(), 8);
+        assert_eq!(chats.len(), 9);
 
         Ok(())
     }

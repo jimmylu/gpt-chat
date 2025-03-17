@@ -1,21 +1,16 @@
 -- Add migration script here
 -- workspace for users
-CREATE TABLE if not exists workspaces (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    owner_id BIGINT not NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+
+
+BEGIN;
+-- insert default user
+INSERT INTO users (id, fullname, email, ws_id, password_hash) VALUES (0, 'Default', 'default@default.com', 0, 'default');
 -- insert default workspace
 INSERT INTO workspaces (id, name, owner_id) VALUES (0, 'Default', 0);
+UPDATE users SET ws_id = 0 WHERE id = 0;
+INSERT INTO chats (id, name, type, members, ws_id) VALUES (0, 'Default', 'public_channel', ARRAY[0], 0);
+COMMIT;
 
--- alter users table  to add workspace_id
+-- add foreign key constraint for ws_id for users
 ALTER TABLE users
-    ADD COLUMN ws_id BIGINT REFERENCES workspaces(id) not null default 0;
-
--- alter chats table to add workspace_id
-ALTER TABLE chats
-    ADD COLUMN ws_id BIGINT REFERENCES workspaces(id);
-
--- create default workspace
+  ADD CONSTRAINT users_ws_id_fk FOREIGN KEY (ws_id) REFERENCES workspaces(id);
