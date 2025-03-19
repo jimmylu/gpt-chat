@@ -29,7 +29,7 @@ POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
-    "email": "luchujun@gmail.com",
+    "email": "luxiaojun@yahoo.com",
     "password": "1234567"
 }
 
@@ -51,9 +51,9 @@ Authorization: {{token}}
 Content-Type: application/json
 
 {
-    "name": "private chat",
+    "name": "public chat",
     "members": [1,2],
-    "public": false
+    "public": true
 }
 
 ### get chat by id

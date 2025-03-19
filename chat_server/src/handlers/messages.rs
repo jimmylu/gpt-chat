@@ -10,10 +10,8 @@ use axum::{
 use tokio::fs;
 use tracing::{info, warn};
 
-use crate::{
-    models::{ChatFile, CreateMessage, ListMessages},
-    AppError, AppState, User,
-};
+use crate::models::{CreateMessage, ListMessages};
+use crate::{models::ChatFile, AppError, AppState, User};
 
 pub(crate) async fn send_message_handler(
     State(state): State<AppState>,
@@ -48,7 +46,6 @@ pub(crate) async fn upload_handler(
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
     let ws_id = user.ws_id.to_string();
-    let base_dir = state.config.server.base_dir.join(ws_id.clone());
     let mut files: Vec<String> = vec![];
     while let Some(mut field) = multipart.next_field().await? {
         let filename = field.file_name().map(|name| name.to_string());
@@ -58,7 +55,7 @@ pub(crate) async fn upload_handler(
             continue;
         };
         let file = ChatFile::new(ws_id.parse().unwrap(), filename, &data);
-        let path = file.path(&base_dir);
+        let path = file.path(&state.config.server.base_dir);
         if path.exists() {
             info!("File already exists: {}", path.display());
         } else {

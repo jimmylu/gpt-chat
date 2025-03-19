@@ -1,4 +1,5 @@
-use crate::{models::CreateChat, AppError, AppState, User};
+use crate::models::CreateChat;
+use crate::{AppError, AppState, User};
 use axum::{
     extract::{Path, State},
     http::StatusCode,

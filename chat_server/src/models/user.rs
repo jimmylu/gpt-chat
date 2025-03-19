@@ -5,8 +5,31 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
+use serde::{Deserialize, Serialize};
+use sqlx::prelude::FromRow;
 
-use super::{ChatUser, CreateUserPayload, DEFAULT_OWNER_ID};
+use super::DEFAULT_OWNER_ID;
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, PartialEq)]
+pub struct ChatUser {
+    pub fullname: String,
+    pub email: String,
+    pub id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateUserPayload {
+    pub fullname: String,
+    pub workspace: String,
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SignInPayload {
+    pub email: String,
+    pub password: String,
+}
 
 impl AppState {
     // find a user by email

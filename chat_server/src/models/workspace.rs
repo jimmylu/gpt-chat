@@ -1,6 +1,8 @@
+use chat_core::Workspace;
+
 use crate::{AppError, AppState};
 
-use super::{Workspace, DEFAULT_OWNER_ID};
+use super::DEFAULT_OWNER_ID;
 
 impl AppState {
     pub async fn workspace_create(&self, name: &str) -> Result<Workspace, AppError> {

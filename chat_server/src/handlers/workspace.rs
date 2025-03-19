@@ -23,10 +23,8 @@ pub(crate) async fn user_list_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        models::{ChatUser, CreateUserPayload},
-        AppError, AppState,
-    };
+    use crate::models::CreateUserPayload;
+    use crate::{AppError, AppState, ChatUser};
     use axum::{extract::Path, http::StatusCode, response::IntoResponse};
     use http_body_util::BodyExt;
 

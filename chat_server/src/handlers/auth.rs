@@ -5,10 +5,8 @@ use axum::{
     Json,
 };
 
-use crate::{
-    models::{CreateUserPayload, SignInPayload},
-    AppError, AppState,
-};
+use crate::models::{CreateUserPayload, SignInPayload};
+use crate::{AppError, AppState};
 
 pub(crate) async fn signup_handler(
     State(state): State<AppState>,

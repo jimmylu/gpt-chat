@@ -399,15 +399,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "chat_server"
+name = "chat-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "axum-extra",
+ "chrono",
+ "futures-util",
+ "http-body-util",
+ "jwt-simple",
+ "serde",
+ "sqlx",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "chat-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "argon2",
  "axum",
  "axum-extra",
+ "chat-core",
  "chrono",
- "futures-util",
  "hex",
  "http-body-util",
  "jwt-simple",
@@ -1624,12 +1644,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "notify_server"
+name = "notify-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "chat-core",
  "futures",
  "serde",
  "serde_yaml",

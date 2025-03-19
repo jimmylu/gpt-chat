@@ -1,6 +1,19 @@
 use crate::{models::ChatFile, AppError, AppState};
 
-use super::{CreateMessage, ListMessages, Message};
+use chat_core::Message;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateMessage {
+    pub content: String,
+    pub files: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListMessages {
+    pub last_id: Option<u64>,
+    pub limit: u64,
+}
 
 impl AppState {
     #[allow(unused)]

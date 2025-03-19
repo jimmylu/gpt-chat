@@ -3,7 +3,6 @@ mod error;
 mod handlers;
 mod middlewares;
 mod models;
-mod utils;
 
 use core::fmt;
 use std::{ops::Deref, sync::Arc};
@@ -14,17 +13,16 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use chat_core::{verify_token, DecodingKey, EncodingKey, TokenVerify};
 use handlers::*;
-use middlewares::{verify_chat, verify_token};
+use middlewares::verify_chat;
 use sqlx::PgPool;
 use tokio::fs;
-use utils::DecodingKey;
-use utils::EncodingKey;
 
+pub use chat_core::User;
 pub use config::AppConfig;
 pub use error::AppError;
-pub use models::User;
-
+pub use models::*;
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     let state = AppState::try_new(config).await?;
 
@@ -45,7 +43,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
         .route("/users/{ws_name}", get(user_list_handler))
         .route("/upload", post(upload_handler))
         .route("/files/{ws_id}/{*file_url}", get(download_handler))
-        .layer(from_fn_with_state(state.clone(), verify_token))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
         .route("/signin", post(signin_handler))
         .route("/signup", post(signup_handler));
 
@@ -84,6 +82,14 @@ impl AppState {
     }
 }
 
+impl TokenVerify for AppState {
+    type Error = AppError;
+
+    fn verify(&self, token: &str) -> Result<User, Self::Error> {
+        self.inner.pk.verify(token).map_err(AppError::from)
+    }
+}
+
 #[allow(unused)]
 struct AppStateInner {
     config: AppConfig,
@@ -115,14 +121,14 @@ mod test_utils {
     use sqlx::Executor;
     use sqlx_db_tester::TestPg;
 
-    use crate::models::{Chat, Workspace};
+    use chat_core::{Chat, Workspace};
 
     use super::*;
 
     impl AppState {
         #[allow(unused)]
         pub async fn new_for_test() -> Result<(TestPg, Self), AppError> {
-            let config = AppConfig::load_for_test()?;
+            let config = AppConfig::load()?;
 
             let sk = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
             let pk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;

@@ -1,5 +1,5 @@
 [workspace]
-members = ["chat_server", "notify_server"]
+members = ["chat_server", "chat_core", "notify_server"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -12,3 +12,9 @@ thiserror = "2.0.11"
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "macros"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+chrono = { version = "0.4.39", features = ["serde"] }
+jwt-simple = "0.12.11"
+axum-extra = { version = "0.10.0", features = ["typed-header"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["compression-full", "request-id", "trace"] }
+uuid = { version = "1.15.1", features = ["v7"] }

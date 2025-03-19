@@ -26,11 +26,17 @@ pub struct AuthConfig {
 
 impl AppConfig {
     pub fn load() -> Result<Self> {
-        // load config from app.yml by serde_yaml
-        // read from /etc/config/app.yml, or ./app.yml or from env CHAT_CONFIG
+        // CARGO_MANIFEST_DIR 是 Rust 在编译时提供的环境变量
+        // 它指向当前 crate 的 Cargo.toml 所在目录
+        // 对于 chat_server 这个 crate，它会指向 /path/to/project/chat_server
+        let manifest_dir: PathBuf = env!("CARGO_MANIFEST_DIR").into();
+        // 使用 dbg! 宏在运行时打印 manifest_dir 的值
+        // 输出格式类似: [src/config.rs:10] manifest_dir = "/path/to/project/chat_server"
+        dbg!(&manifest_dir);
+        // read from /etc/config/chat.yml, or ./chat.yml or from env CHAT_CONFIG
         let ret = match (
-            File::open("/etc/config/app.yml"),
-            File::open("app.yml"),
+            File::open("/etc/config/chat.yml"),
+            File::open(manifest_dir.join("chat.yml")),
             std::env::var("CHAT_CONFIG"),
         ) {
             (Ok(file), _, _) => serde_yaml::from_reader(file),
@@ -40,19 +46,5 @@ impl AppConfig {
         };
 
         Ok(ret?)
-    }
-}
-
-#[cfg(test)]
-impl AppConfig {
-    pub fn load_for_test() -> Result<Self> {
-        let file = std::env::current_dir()
-            .ok()
-            .map(|p| p.parent().unwrap().join("app.yml"))
-            .map(File::open)
-            .transpose()?
-            .unwrap();
-
-        Ok(serde_yaml::from_reader(file)?)
     }
 }

@@ -5,21 +5,24 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::{
-    headers::{authorization::Bearer, Authorization},
     TypedHeader,
+    headers::{Authorization, authorization::Bearer},
 };
 use tracing::warn;
 
-use crate::AppState;
+use super::TokenVerify;
 
-pub async fn verify_token(State(state): State<AppState>, req: Request, next: Next) -> Response {
+pub async fn verify_token<T>(State(state): State<T>, req: Request, next: Next) -> Response
+where
+    T: TokenVerify + Clone + Send + Sync + 'static,
+{
     let (mut parts, body) = req.into_parts();
 
     let req =
         match TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, &state).await {
             Ok(TypedHeader(Authorization(bearer))) => {
                 let token = bearer.token();
-                let Ok(user) = state.pk.verify(token) else {
+                let Ok(user) = state.verify(token) else {
                     let msg = format!("token verification failed: {}", token);
                     warn!("{}", msg);
                     return (StatusCode::FORBIDDEN, msg).into_response();
@@ -42,15 +45,32 @@ pub async fn verify_token(State(state): State<AppState>, req: Request, next: Nex
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Arc;
+
     use super::*;
-    use crate::{AppState, User};
+    use crate::{DecodingKey, EncodingKey, User};
     use anyhow::Result;
     use axum::{
-        body::Body, http::HeaderValue, middleware::from_fn_with_state, routing::get, Extension,
-        Router,
+        Extension, Router, body::Body, http::HeaderValue, middleware::from_fn_with_state,
+        routing::get,
     };
     use http_body_util::BodyExt as _;
     use tower::ServiceExt;
+
+    #[derive(Clone)]
+    struct AppState(Arc<AppStateInner>);
+
+    struct AppStateInner {
+        sk: EncodingKey,
+        pk: DecodingKey,
+    }
+
+    impl TokenVerify for AppState {
+        type Error = ();
+        fn verify(&self, token: &str) -> Result<User, Self::Error> {
+            self.0.pk.verify(token).map_err(|_| ())
+        }
+    }
 
     async fn handler(Extension(user): Extension<User>, _req: Request) -> impl IntoResponse {
         (StatusCode::OK, user.email).into_response()
@@ -58,11 +78,14 @@ mod tests {
 
     #[tokio::test]
     async fn verify_token_none_bearer_header_should_return_unauthorized() -> Result<()> {
-        let (_pg, state) = AppState::new_for_test().await?;
+        let state = AppState(Arc::new(AppStateInner {
+            sk: EncodingKey::load(include_str!("../../fixtures/encoding.pem"))?,
+            pk: DecodingKey::load(include_str!("../../fixtures/decoding.pem"))?,
+        }));
         let app = Router::new().route(
             "/api",
             get(handler)
-                .layer(from_fn_with_state(state.clone(), verify_token))
+                .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
                 .with_state(state),
         );
 
@@ -75,11 +98,14 @@ mod tests {
 
     #[tokio::test]
     async fn verify_token_invalid_bearer_header_should_return_forbidden() -> Result<()> {
-        let (_pg, state) = AppState::new_for_test().await?;
+        let state = AppState(Arc::new(AppStateInner {
+            sk: EncodingKey::load(include_str!("../../fixtures/encoding.pem"))?,
+            pk: DecodingKey::load(include_str!("../../fixtures/decoding.pem"))?,
+        }));
         let app = Router::new().route(
             "/api",
             get(handler)
-                .layer(from_fn_with_state(state.clone(), verify_token))
+                .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
                 .with_state(state),
         );
 
@@ -94,15 +120,18 @@ mod tests {
 
     #[tokio::test]
     async fn verify_token_signed_should_work() -> Result<()> {
-        let (_pg, state) = AppState::new_for_test().await?;
+        let state = AppState(Arc::new(AppStateInner {
+            sk: EncodingKey::load(include_str!("../../fixtures/encoding.pem"))?,
+            pk: DecodingKey::load(include_str!("../../fixtures/decoding.pem"))?,
+        }));
 
         let user = User::new(1, 1, "test".to_string(), "test@test.com".to_string());
-        let token = state.sk.sign(user)?;
+        let token = state.0.sk.sign(user)?;
 
         let app = Router::new().route(
             "/api",
             get(handler)
-                .layer(from_fn_with_state(state.clone(), verify_token))
+                .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
                 .with_state(state),
         );
 

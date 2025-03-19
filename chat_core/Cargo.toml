@@ -1,0 +1,23 @@
+[package]
+name = "chat-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+jwt-simple = { workspace = true }
+anyhow = { workspace = true }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+uuid = { workspace = true }
+futures-util = "0.3.31"
+
+
+[dev-dependencies]
+http-body-util = "0.1.2"

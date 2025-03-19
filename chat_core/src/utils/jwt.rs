@@ -1,6 +1,6 @@
-use jwt_simple::prelude::*;
+use jwt_simple::{Error, prelude::*};
 
-use crate::{AppError, User};
+use crate::User;
 
 const JWT_DURATION: u64 = 60 * 60 * 24 * 7; // 7 days
 const JWT_ISSUER: &str = "chat_server";
@@ -11,12 +11,12 @@ pub struct DecodingKey(Ed25519PublicKey);
 
 impl EncodingKey {
     // 从 PEM 格式的字符串加载密钥
-    pub fn load(pem: &str) -> Result<Self, AppError> {
+    pub fn load(pem: &str) -> Result<Self, Error> {
         let key = Ed25519KeyPair::from_pem(pem)?; // pem 是 PEM 格式的私钥字符串
         Ok(Self(key))
     }
 
-    pub fn sign(&self, user: impl Into<User>) -> Result<String, AppError> {
+    pub fn sign(&self, user: impl Into<User>) -> Result<String, Error> {
         let claims = Claims::with_custom_claims(user.into(), Duration::from(JWT_DURATION))
             .with_issuer(JWT_ISSUER)
             .with_audience(JWT_AUDIENCE);
@@ -26,13 +26,13 @@ impl EncodingKey {
 }
 
 impl DecodingKey {
-    pub fn load(pem: &str) -> Result<Self, AppError> {
+    pub fn load(pem: &str) -> Result<Self, Error> {
         let key = Ed25519PublicKey::from_pem(pem)?;
         Ok(Self(key))
     }
 
     #[allow(unused)]
-    pub fn verify(&self, token: &str) -> Result<User, AppError> {
+    pub fn verify(&self, token: &str) -> Result<User, Error> {
         let mut opts = VerificationOptions {
             allowed_audiences: Some(HashSet::from_strings(&[JWT_AUDIENCE])),
             allowed_issuers: Some(HashSet::from_strings(&[JWT_ISSUER])),
@@ -45,9 +45,8 @@ impl DecodingKey {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
-
     use super::*;
+    use anyhow::Result;
 
     #[test]
     fn jwt_sign_verify_should_work() -> Result<()> {
@@ -58,7 +57,6 @@ mod tests {
         let decoding_key = DecodingKey::load(decoding_pem)?;
 
         let user = User::new(1, 1, "test".to_string(), "test@test.com".to_string());
-
         let token = encoding_key.sign(user.clone())?;
 
         let user1 = decoding_key.verify(&token)?;

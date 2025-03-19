@@ -1,6 +1,14 @@
-use crate::{models::ChatType, AppError, AppState};
+use crate::{AppError, AppState};
 
-use super::{Chat, CreateChat};
+use chat_core::{Chat, ChatType};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct CreateChat {
+    pub name: Option<String>,
+    pub members: Vec<i64>,
+    pub public: bool,
+}
 
 impl AppState {
     #[allow(unused)]
