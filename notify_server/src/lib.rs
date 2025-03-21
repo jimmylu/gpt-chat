@@ -1,28 +1,65 @@
+use std::{fmt, ops::Deref, sync::Arc};
+
 use axum::{
     Router,
+    middleware::from_fn_with_state,
     response::{Html, IntoResponse},
     routing::get,
 };
 
+mod config;
+mod error;
+mod notif;
 mod sse;
 
-use chat_core::{Chat, Message};
-use futures::StreamExt;
-use sqlx::postgres::PgListener;
-pub use sse::*;
-use tracing::info;
+use chat_core::{DecodingKey, TokenVerify, User, verify_token};
+use dashmap::DashMap;
 
-pub enum Event {
-    NewChat(Chat),
-    AddToChat(Chat),
-    RemoveFromChat(Chat),
-    NewMessage(Message),
+pub use config::*;
+pub use error::*;
+pub use notif::AppEvent;
+pub use notif::*;
+pub use sse::*;
+
+use tokio::sync::broadcast;
+
+pub type UserMap = Arc<DashMap<u64, broadcast::Sender<Arc<AppEvent>>>>;
+
+#[derive(Debug, Clone)]
+pub struct AppState(Arc<AppStateInner>);
+
+pub struct AppStateInner {
+    pub config: AppConfig,
+    pub dk: DecodingKey,
+    pub users: UserMap,
 }
 
-pub fn get_router() -> Router {
-    Router::new()
-        .route("/", get(index_handler))
+impl fmt::Debug for AppStateInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppStateInner")
+            .field("config", &self.config)
+            .finish()
+    }
+}
+
+impl AppState {
+    pub async fn try_new() -> Self {
+        let config = AppConfig::load().unwrap();
+        let dk = DecodingKey::load(&config.auth.pk).unwrap();
+        let users = Arc::new(DashMap::new());
+        Self(Arc::new(AppStateInner { config, dk, users }))
+    }
+}
+
+pub async fn get_router() -> (Router, AppState) {
+    let state = AppState::try_new().await;
+    let app = Router::new()
         .route("/events", get(sse::sse_handler))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        .route("/", get(index_handler))
+        .with_state(state.clone());
+
+    (app, state)
 }
 
 async fn index_handler() -> impl IntoResponse {
@@ -30,20 +67,19 @@ async fn index_handler() -> impl IntoResponse {
     Html(html)
 }
 
-pub async fn setup_pg_listener() -> anyhow::Result<()> {
-    let mut listener =
-        PgListener::connect("postgres://jimmylu:jimmylu@localhost:5432/chat").await?;
+impl TokenVerify for AppState {
+    type Error = AppError;
 
-    listener.listen("chat").await?;
-    listener.listen("chat_message_created").await?;
+    fn verify(&self, token: &str) -> Result<User, Self::Error> {
+        let user = self.dk.verify(token).map_err(AppError::from)?;
+        Ok(user)
+    }
+}
 
-    let mut stream = listener.into_stream();
+impl Deref for AppState {
+    type Target = AppStateInner;
 
-    tokio::spawn(async move {
-        while let Some(Ok(msg)) = stream.next().await {
-            info!("{:?}", msg);
-        }
-    });
-
-    Ok(())
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }

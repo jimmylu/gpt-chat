@@ -1,11 +1,30 @@
 <html>
-    <body>
-        <h1>Hello, World!</h1>
-        <script>
-            const eventSource = new EventSource('http://localhost:6687/events');
-            eventSource.onmessage = function(event) {
-                console.log("Got event: ", event.data);
-            };
-        </script>
-    </body>
+  <body>
+    <h1>Hello, World!</h1>
+    <script>
+      const token =
+        "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDI1MzU2ODcsImV4cCI6MTc0MjUzNTY4NywibmJmIjoxNzQyNTM1Njg3LCJpc3MiOiJjaGF0X3NlcnZlciIsImF1ZCI6ImNoYXRfd2ViIiwiaWQiOjEsIndzX2lkIjowLCJmdWxsbmFtZSI6Imx1eGlhb2p1biIsImVtYWlsIjoibHV4aWFvanVuQHlhaG9vLmNvbSIsImNyZWF0ZWRfYXQiOiIyMDI1LTAzLTIxVDA1OjQwOjUxLjgyNTUwMloiLCJ1cGRhdGVkX2F0IjoiMjAyNS0wMy0yMVQwNTo0MDo1MS44MjU1MDJaIn0.V055TuWzuLHYg9voPaydyFM54slQ_FJRZylx_xodLLY5un1k7n0fHIXRsH3PqTWaogQaAvheMFqQn8QY06HIBg";
+      const eventSource = new EventSource(
+        "http://localhost:6687/events?token=" + token
+      );
+      eventSource.onmessage = function (event) {
+        console.log("Got event: ", event.data);
+      };
+      eventSource.addEventListener("NewChat", function (event) {
+        console.log("NewChat:", event.data);
+      });
+
+      eventSource.addEventListener("add_to_chat", function (event) {
+        console.log("AddToChat:", event.data);
+      });
+
+      eventSource.addEventListener("RemoveFromChat", function (event) {
+        console.log("RemoveFromChat:", event.data);
+      });
+
+      eventSource.addEventListener("new_message", function (event) {
+        console.log("NewMessage:", event.data);
+      });
+    </script>
+  </body>
 </html>

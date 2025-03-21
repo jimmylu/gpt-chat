@@ -1,5 +1,5 @@
 use axum::{
-    extract::{FromRequestParts, Request, State},
+    extract::{FromRequestParts, Query, Request, State},
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
@@ -8,9 +8,15 @@ use axum_extra::{
     TypedHeader,
     headers::{Authorization, authorization::Bearer},
 };
+use serde::Deserialize;
 use tracing::warn;
 
 use super::TokenVerify;
+
+#[derive(Debug, Deserialize)]
+struct Params {
+    pub token: String,
+}
 
 pub async fn verify_token<T>(State(state): State<T>, req: Request, next: Next) -> Response
 where
@@ -18,26 +24,35 @@ where
 {
     let (mut parts, body) = req.into_parts();
 
-    let req =
+    let token =
         match TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, &state).await {
-            Ok(TypedHeader(Authorization(bearer))) => {
-                let token = bearer.token();
-                let Ok(user) = state.verify(token) else {
-                    let msg = format!("token verification failed: {}", token);
-                    warn!("{}", msg);
-                    return (StatusCode::FORBIDDEN, msg).into_response();
-                };
-
-                let mut req = Request::from_parts(parts, body);
-                req.extensions_mut().insert(user);
-                req
-            }
+            Ok(TypedHeader(Authorization(bearer))) => bearer.token().to_string(),
             Err(e) => {
-                let msg = format!("parse authorization header failed: {}", e);
-                warn!("{}", msg);
-                return (StatusCode::UNAUTHORIZED, msg).into_response();
+                if e.is_missing() {
+                    match Query::<Params>::from_request_parts(&mut parts, &state).await {
+                        Ok(params) => params.token.clone(),
+                        Err(e) => {
+                            let msg = format!("parse authorization param failed: {}", e);
+                            warn!("{}", msg);
+                            return (StatusCode::UNAUTHORIZED, msg).into_response();
+                        }
+                    }
+                } else {
+                    let msg = format!("parse authorization header failed: {}", e);
+                    warn!("{}", msg);
+                    return (StatusCode::UNAUTHORIZED, msg).into_response();
+                }
             }
         };
+
+    let Ok(user) = state.verify(&token) else {
+        let msg = format!("token verification failed: {}", token);
+        warn!("{}", msg);
+        return (StatusCode::FORBIDDEN, msg).into_response();
+    };
+
+    let mut req = Request::from_parts(parts, body);
+    req.extensions_mut().insert(user);
 
     next.run(req).await
 }

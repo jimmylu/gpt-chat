@@ -1,4 +1,4 @@
-use jwt_simple::{Error, prelude::*};
+use jwt_simple::prelude::*;
 
 use crate::User;
 
@@ -11,12 +11,12 @@ pub struct DecodingKey(Ed25519PublicKey);
 
 impl EncodingKey {
     // 从 PEM 格式的字符串加载密钥
-    pub fn load(pem: &str) -> Result<Self, Error> {
+    pub fn load(pem: &str) -> Result<Self, jwt_simple::Error> {
         let key = Ed25519KeyPair::from_pem(pem)?; // pem 是 PEM 格式的私钥字符串
         Ok(Self(key))
     }
 
-    pub fn sign(&self, user: impl Into<User>) -> Result<String, Error> {
+    pub fn sign(&self, user: impl Into<User>) -> Result<String, jwt_simple::Error> {
         let claims = Claims::with_custom_claims(user.into(), Duration::from(JWT_DURATION))
             .with_issuer(JWT_ISSUER)
             .with_audience(JWT_AUDIENCE);
@@ -26,13 +26,13 @@ impl EncodingKey {
 }
 
 impl DecodingKey {
-    pub fn load(pem: &str) -> Result<Self, Error> {
+    pub fn load(pem: &str) -> Result<Self, jwt_simple::Error> {
         let key = Ed25519PublicKey::from_pem(pem)?;
         Ok(Self(key))
     }
 
     #[allow(unused)]
-    pub fn verify(&self, token: &str) -> Result<User, Error> {
+    pub fn verify(&self, token: &str) -> Result<User, jwt_simple::Error> {
         let mut opts = VerificationOptions {
             allowed_audiences: Some(HashSet::from_strings(&[JWT_AUDIENCE])),
             allowed_issuers: Some(HashSet::from_strings(&[JWT_ISSUER])),
