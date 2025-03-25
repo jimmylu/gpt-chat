@@ -2,10 +2,12 @@ use std::{fmt, ops::Deref, sync::Arc};
 
 use axum::{
     Router,
+    http::Method,
     middleware::from_fn_with_state,
     response::{Html, IntoResponse},
     routing::get,
 };
+use tower_http::cors::{self, CorsLayer};
 
 mod config;
 mod error;
@@ -43,23 +45,37 @@ impl fmt::Debug for AppStateInner {
 }
 
 impl AppState {
-    pub async fn try_new() -> Self {
-        let config = AppConfig::load().unwrap();
+    pub async fn new(config: AppConfig) -> Self {
         let dk = DecodingKey::load(&config.auth.pk).unwrap();
         let users = Arc::new(DashMap::new());
         Self(Arc::new(AppStateInner { config, dk, users }))
     }
 }
 
-pub async fn get_router() -> (Router, AppState) {
-    let state = AppState::try_new().await;
+pub async fn get_router(config: AppConfig) -> anyhow::Result<Router> {
+    let state = AppState::new(config).await;
+    setup_pg_listener(state.clone()).await?;
+
+    let cors = CorsLayer::new()
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::PUT,
+        ])
+        .allow_origin(cors::Any)
+        .allow_headers(cors::Any);
+
     let app = Router::new()
         .route("/events", get(sse::sse_handler))
         .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        .layer(cors)
         .route("/", get(index_handler))
         .with_state(state.clone());
 
-    (app, state)
+    Ok(app)
 }
 
 async fn index_handler() -> impl IntoResponse {

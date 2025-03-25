@@ -18,6 +18,7 @@ sqlx = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 jwt-simple = { workspace = true }
-
-chat-core = { path = "../chat_core" }
 dashmap = "6.1.0"
+tower-http ={ workspace = true}
+
+chat-core = { workspace = true }

@@ -3,27 +3,27 @@
     <h1>Hello, World!</h1>
     <script>
       const token =
-        "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDI1MzU2ODcsImV4cCI6MTc0MjUzNTY4NywibmJmIjoxNzQyNTM1Njg3LCJpc3MiOiJjaGF0X3NlcnZlciIsImF1ZCI6ImNoYXRfd2ViIiwiaWQiOjEsIndzX2lkIjowLCJmdWxsbmFtZSI6Imx1eGlhb2p1biIsImVtYWlsIjoibHV4aWFvanVuQHlhaG9vLmNvbSIsImNyZWF0ZWRfYXQiOiIyMDI1LTAzLTIxVDA1OjQwOjUxLjgyNTUwMloiLCJ1cGRhdGVkX2F0IjoiMjAyNS0wMy0yMVQwNTo0MDo1MS44MjU1MDJaIn0.V055TuWzuLHYg9voPaydyFM54slQ_FJRZylx_xodLLY5un1k7n0fHIXRsH3PqTWaogQaAvheMFqQn8QY06HIBg";
+        "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDI4OTY3NzEsImV4cCI6MTc0Mjg5Njc3MSwibmJmIjoxNzQyODk2NzcxLCJpc3MiOiJjaGF0X3NlcnZlciIsImF1ZCI6ImNoYXRfd2ViIiwiaWQiOjIsIndzX2lkIjowLCJmdWxsbmFtZSI6Indhbmd3dSIsImVtYWlsIjoid2FuZ3d1QGdtYWlsLmNvbSIsImNyZWF0ZWRfYXQiOiIyMDI1LTAzLTIxVDA1OjQwOjU2Ljc0NjkwNFoiLCJ1cGRhdGVkX2F0IjoiMjAyNS0wMy0yMVQwNTo0MDo1Ni43NDY5MDRaIn0.jL-cq13x-wRbVc59aXO9FIZF0MQHXEIM6uJvIRXVZzk-0zy8TAOWV998Z4by-T3E9M6lfD-1yXxqPEv-TowRCQ";
       const eventSource = new EventSource(
         "http://localhost:6687/events?token=" + token
       );
       eventSource.onmessage = function (event) {
         console.log("Got event: ", event.data);
       };
-      eventSource.addEventListener("NewChat", function (event) {
-        console.log("NewChat:", event.data);
+      eventSource.addEventListener("new_chat", function (event) {
+        console.log(event.data);
       });
 
       eventSource.addEventListener("add_to_chat", function (event) {
-        console.log("AddToChat:", event.data);
+        console.log(event.data);
       });
 
-      eventSource.addEventListener("RemoveFromChat", function (event) {
-        console.log("RemoveFromChat:", event.data);
+      eventSource.addEventListener("remove_from_chat", function (event) {
+        console.log(event.data);
       });
 
       eventSource.addEventListener("new_message", function (event) {
-        console.log("NewMessage:", event.data);
+        console.log(event.data);
       });
     </script>
   </body>

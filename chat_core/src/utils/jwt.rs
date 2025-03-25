@@ -6,7 +6,10 @@ const JWT_DURATION: u64 = 60 * 60 * 24 * 7; // 7 days
 const JWT_ISSUER: &str = "chat_server";
 const JWT_AUDIENCE: &str = "chat_web";
 
+#[derive(Clone)]
 pub struct EncodingKey(Ed25519KeyPair);
+
+#[derive(Clone)]
 pub struct DecodingKey(Ed25519PublicKey);
 
 impl EncodingKey {

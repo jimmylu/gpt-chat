@@ -5,7 +5,6 @@ use axum::{
     extract::State,
     response::sse::{Event, Sse},
 };
-use axum_extra::{TypedHeader, headers};
 use chat_core::User;
 use futures::Stream;
 use tokio::sync::broadcast;
@@ -19,10 +18,8 @@ const CAPACITY: usize = 256;
 pub async fn sse_handler(
     State(state): State<AppState>,
     Extension(user): Extension<User>,
-    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+    // TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    info!("`{}` connected", user_agent.as_str());
-
     let user_id = user.id as u64;
     let users = &state.users;
 
@@ -45,7 +42,7 @@ pub async fn sse_handler(
         };
 
         let v = serde_json::to_string(&e).expect("failed to serialize event");
-        info!("Sending event {}: {:?}", name, v);
+        dbg!(format!("Sending event {}: {:?}", name, v));
         Ok(Event::default().data(v).event(name))
     });
 

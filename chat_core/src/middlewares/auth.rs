@@ -44,12 +44,15 @@ where
                 }
             }
         };
+    dbg!(format!("auth token={:?}", &token));
 
     let Ok(user) = state.verify(&token) else {
         let msg = format!("token verification failed: {}", token);
         warn!("{}", msg);
         return (StatusCode::FORBIDDEN, msg).into_response();
     };
+
+    dbg!(format!("auth user:{:?}", user.clone()));
 
     let mut req = Request::from_parts(parts, body);
     req.extensions_mut().insert(user);

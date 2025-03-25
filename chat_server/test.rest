@@ -29,7 +29,7 @@ POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
-    "email": "luxiaojun@yahoo.com",
+    "email": "wangwu@gmail.com",
     "password": "1234567"
 }
 
@@ -120,11 +120,11 @@ Content-Type: application/json
 
 {
     "content": "hello",
-    "files": ["/files/0/3b5/562/a74f02a7d36ca7cb6b2ab86be5c8dac921.yml"]
+    "files": []
 }
 
 
 
 ### get messages
-GET {{baseUrl}}/api/chats/2/messages?last_id=20&limit=10
+GET {{baseUrl}}/api/chats/2/messages?limit=10
 Authorization: {{token}}

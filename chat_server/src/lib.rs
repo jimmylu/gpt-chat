@@ -23,9 +23,8 @@ pub use chat_core::User;
 pub use config::AppConfig;
 pub use error::AppError;
 pub use models::*;
-pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
-    let state = AppState::try_new(config).await?;
 
+pub async fn get_router(state: &mut AppState) -> Result<Router, AppError> {
     let chat = Router::new()
         .route(
             "/{id}",
@@ -50,13 +49,13 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
     let app = Router::new()
         .route("/", get(index))
         .nest("/api", api_router)
-        .with_state(state);
+        .with_state(state.clone());
 
     Ok(app)
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
     inner: Arc<AppStateInner>,
 }
 
@@ -90,12 +89,12 @@ impl TokenVerify for AppState {
     }
 }
 
-#[allow(unused)]
-struct AppStateInner {
-    config: AppConfig,
-    sk: EncodingKey,
-    pk: DecodingKey,
-    pool: PgPool,
+#[derive(Clone)]
+pub struct AppStateInner {
+    pub config: AppConfig,
+    pub sk: EncodingKey,
+    pub pk: DecodingKey,
+    pub pool: PgPool,
 }
 
 impl Deref for AppState {
@@ -115,13 +114,11 @@ impl fmt::Debug for AppStateInner {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-util")]
 mod test_utils {
 
     use sqlx::Executor;
     use sqlx_db_tester::TestPg;
-
-    use chat_core::{Chat, Workspace};
 
     use super::*;
 
@@ -180,12 +177,12 @@ mod test_utils {
             .await?;
         assert_eq!(users.len(), 10);
 
-        let workspaces = sqlx::query_as::<_, Workspace>("select * from workspaces")
+        let workspaces = sqlx::query_as::<_, chat_core::Workspace>("select * from workspaces")
             .fetch_all(&pool)
             .await?;
         assert_eq!(workspaces.len(), 3);
 
-        let chats = sqlx::query_as::<_, Chat>("select * from chats")
+        let chats = sqlx::query_as::<_, chat_core::Chat>("select * from chats")
             .fetch_all(&pool)
             .await?;
         assert_eq!(chats.len(), 9);

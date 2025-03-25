@@ -5,20 +5,20 @@ use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
 // app config from app.yml
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub auth: AuthConfig,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub port: u16,
     pub db_url: String,
     pub base_dir: PathBuf,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthConfig {
     pub sk: String,
     pub pk: String,
